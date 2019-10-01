@@ -37,8 +37,12 @@ TFT_eSPI tft = TFT_eSPI(135, 240); // Invoke custom library
 Button2 btn1(BUTTON_1);
 Button2 btn2(BUTTON_2);
 
+typedef enum {
+  DISPLAY_WEATHER,
+  DISPLAY_TIME
+} DisplayFunction;
+
 // Function prototypes
-void wifi_scan();
 
 // Global variables
 char buff[512];
@@ -53,6 +57,11 @@ WiFiClient client;
 unsigned long StartTime = millis();
 unsigned long oldMillis;
 unsigned long millisUntilReport = 0;
+bool topBtnLong, topBtnTap;
+bool btmBtnLong, btmBtnTap;
+bool more = false;
+DisplayFunction fn = DISPLAY_WEATHER;
+
 //TFT_eSPI tft = TFT_eSPI();            // Invoke custom library
 TFT_eFEX fex = TFT_eFEX(&tft);    // Create TFT_eFX object "efx" with pointer to "tft" object
 
@@ -64,32 +73,11 @@ void espDelay(int ms)
   esp_light_sleep_start();
 }
 
-void showVoltage()
-{
-  static uint64_t timeStamp = 0;
-  tft.setTextColor(TFT_YELLOW, TFT_BLUE);
-  tft.setTextSize(2);
-  if (millis() - timeStamp > 1000) {
-    timeStamp = millis();
-    uint16_t v = analogRead(ADC_PIN);
-    float battery_voltage = ((float)v / 4095.0) * 2.0 * 3.3 * (vref / 1000.0);
-    String voltage = String(battery_voltage) + "V";
-    Serial.println(voltage);
-    tft.fillScreen(TFT_BLACK);
-    tft.fillRoundRect(15, 88, 105, 16 + 16 + 6 + 24, 10, TFT_BLUE);
-    tft.setCursor(28, 100); // (0,0) = Set cursor at top left of screen
-    tft.println("Voltage");
-    tft.setCursor(40, 122);
-    tft.println(voltage);
-    //tft.setTextDatum(MC_DATUM);
-    //tft.drawString(voltage,  tft.width() / 2, tft.height() / 2 );
-  }
-}
-
 void button_init()
 {
   btn1.setLongClickHandler([](Button2 & b) {
-    btnClick = false;
+    topBtnLong = true;
+
     int r = digitalRead(TFT_BL);
     tft.fillScreen(TFT_BLACK);
     tft.setTextColor(TFT_GREEN, TFT_BLACK);
@@ -105,14 +93,13 @@ void button_init()
     esp_deep_sleep_start();
   });
   btn1.setPressedHandler([](Button2 & b) {
-    Serial.println("Detect Voltage..");
-    btnClick = true;
+    Serial.println("Top Btn tap");
+    topBtnTap = true;
   });
 
   btn2.setPressedHandler([](Button2 & b) {
-    btnClick = false;
-    Serial.println("btn press wifi scan");
-    wifi_scan();
+    Serial.println("Btm Btn tap");
+    btmBtnTap = true;
   });
 }
 
@@ -124,64 +111,31 @@ void button_loop()
 
 bool wifi_join(void)
 {
-  int numTries = 5;
+  int numTries = 10;
   tft.setRotation(1);
-  tft.setCursor(0, 0);
-  tft.setTextColor(TFT_GREEN, TFT_BLACK);
-  tft.fillScreen(TFT_BLACK);
-  tft.setTextSize(2);
-  tft.print("Connecting to:");
-  tft.println(ssid);
-  tft.print("pass:");
-  tft.println(pass);
-  while ((status != WL_CONNECTED) && (--numTries != 0)) {
-    status = WiFi.begin(ssid, pass);  // Connect to WPA/WPA2 network:
-    delay(2000);    // wait for connection:
-  }
-  if (status == WL_CONNECTED) {
-    IPAddress ip = WiFi.localIP();
-    tft.print("Wifi:");
-    tft.println(ssid);
-    tft.print("IP:");
-    tft.println(ip);
-    return true;
-  } else {
-    tft.print("Failed to connect...");
-    return false;
-  }
-}
-
-void wifi_scan()
-{
-  tft.setCursor(0, 0);
-  tft.setTextColor(TFT_GREEN, TFT_BLACK);
-  tft.fillScreen(TFT_BLACK);
-  tft.setTextDatum(MC_DATUM);
-  tft.setTextSize(1);
-
-  tft.drawString("Scan Network", tft.width() / 2, tft.height() / 2);
-
-  WiFi.mode(WIFI_STA);
-  WiFi.disconnect();
-  delay(100);
-
-  int16_t n = WiFi.scanNetworks();
-  tft.fillScreen(TFT_BLACK);
-  if (n == 0) {
-    tft.drawString("no networks found", tft.width() / 2, tft.height() / 2);
-  } else {
-    tft.setTextDatum(TL_DATUM);
+  while (true) {
     tft.setCursor(0, 0);
-    Serial.printf("Found %d net\n", n);
-    for (int i = 0; i < n; ++i) {
-      sprintf(buff,
-              "%s(%d)",
-              WiFi.SSID(i).c_str(),
-              WiFi.RSSI(i));
-      tft.println(buff);
+    tft.setTextColor(TFT_GREEN, TFT_BLACK);
+    tft.fillScreen(TFT_BLACK);
+    tft.setTextSize(2);
+    tft.println("Connecting to:"); tft.println(ssid);
+    //tft.print("pass:"); tft.println(pass); // Only print password to display for testing...
+    while ((status != WL_CONNECTED) && (--numTries != 0)) {
+      status = WiFi.begin(ssid, pass);  // Connect to WPA/WPA2 network:
+      delay(1000);    // wait for connection:
     }
+    if (status == WL_CONNECTED) {
+      IPAddress ip = WiFi.localIP();
+      tft.print("IP:"); tft.println(ip);
+      if ((ip[0] == 192) && (ip[1] == 168)) { // Check that address allocated looks plausible
+        tft.println("Connected!");
+        return true;
+      } else tft.println("Silly IP");
+    } else tft.print("Failed to connect...");
+    WiFi.disconnect(); // was return false;, but we always want to keep retrying
+    delay(1000);    // wait for disconnection...
+    tft.println("Re-trying...");
   }
-  WiFi.mode(WIFI_OFF);
 }
 
 void setup()
@@ -190,13 +144,9 @@ void setup()
   Serial.println("Start");
   tft.init();
   tft.setRotation(1);
-  //tft.fillScreen(TFT_BLACK);
   tft.setSwapBytes(true);
   tft.pushImage(0, 0,  240, 135, ttgo);
   espDelay(5000);
-  tft.setRotation(0);
-  tft.fillScreen(TFT_GREEN);
-  //espDelay(1000);
 
   if (wifi_join()) {
     if (client.connect(server, port)) { // Taken from https://www.arduino.cc/en/Tutorial/WiFiWebClient
@@ -207,20 +157,7 @@ void setup()
       tft.println("Server not available");
     }
   }
-
   button_init();
-
-  esp_adc_cal_characteristics_t adc_chars;
-  esp_adc_cal_value_t val_type = esp_adc_cal_characterize((adc_unit_t)ADC_UNIT_1, (adc_atten_t)ADC1_CHANNEL_6, (adc_bits_width_t)ADC_WIDTH_BIT_12, 1100, &adc_chars);
-  //Check type of calibration value used to characterize ADC
-  if (val_type == ESP_ADC_CAL_VAL_EFUSE_VREF) {
-    Serial.printf("eFuse Vref:%u mV", adc_chars.vref);
-    vref = adc_chars.vref;
-  } else if (val_type == ESP_ADC_CAL_VAL_EFUSE_TP) {
-    Serial.printf("Two Point --> coeff_a:%umV coeff_b:%umV\n", adc_chars.coeff_a, adc_chars.coeff_b);
-  } else {
-    Serial.println("Default Vref: 1100mV");
-  }
   if (!SPIFFS.begin()) {
     Serial.println("SPIFFS initialisation failed!");
     while (1) yield(); // Stay here twiddling thumbs waiting
@@ -231,23 +168,23 @@ void setup()
 char* GetNextItem(char* dict)
 {
   char ch;
-  Serial.print("In GetNextItem");
+  //Serial.print("In GetNextItem");
   while (ch = *dict++) {
     if (ch == ',') break; // Advance beyond ',' to next <item>:<val> pair
     if (('}' == ch) || ('{' == ch)) {
-      Serial.println(", found start or end of dict");
+      //Serial.println(", found start or end of dict");
       return dict-1;  // Stop at start or end of dict
     }
   }
-  Serial.println(", found comma");
+  //Serial.println(", found comma");
   return dict;  // Now pointing to next <item>
 }
 
 bool CmpItem(char* target, char* dict)
 {
-  Serial.print("CmpItem:"); Serial.print(target);
+  //Serial.print("CmpItem:"); Serial.print(target);
   while (*dict++ != '\'') ; // Get opening quote
-  Serial.print(" in "); Serial.println(dict);
+  //Serial.print(" in "); Serial.println(dict);
   while (*target++ == *dict++) ;  // Keep advancing until we have a mismatch
   return ((*--target == '\0') && (*--dict == '\''));  // Return true if the target is finished and the source dict string is also finished, thus a perfect match
   /*if ((*--target == '\0') && (*--dict == '\'')) {
@@ -268,14 +205,14 @@ char* FindItem(char* dict, char* item)
       dict = GetNextItem(dict); // Advance dict to start of <item> (after comma), or to close curly brace
       if ('}' == *dict) break;  // Stop at end of dict
       if (CmpItem(item, dict)) {
-        Serial.println("Got match!");
+        //Serial.println("Got match!");
         while (*dict++ != ':') ; // Advance beyond ':'
         while (*dict++ != '\'') ; // and opening quote, to get to start of <val>
         return dict;  // Now pointing to <val> associated with <item>
-      } else Serial.println("Advance to next item...");
+      } //else Serial.println("Advance to next item...");
       dict++; // Advance beyond start of this item in order to get to next one...
     }
-  }
+  } else Serial.println("Not a dict!");
   return 0; // Indicate we've not found the item
 }
 
@@ -291,34 +228,96 @@ void GetDictVal(char* dict, char* item, char* val)
   }
 }
 
-void RenderWeather(char* weatherReport)
+void RenderTimeDigits(char* report)
+{
+  char timeDigits[6];
+  
+  Serial.println("Time digits");
+  // Parse the report as Python dict, as {<key>:<value>,...}
+  GetDictVal(report, "timeDigits", timeDigits);
+  tft.fillScreen(TFT_WHITE);
+  tft.setRotation(1);
+  tft.setTextColor(TFT_BLACK, TFT_WHITE);
+  tft.setTextDatum(MC_DATUM);
+  //tft.loadFont("NotoSansBold36");   // Name of font file (library adds leading / and .vlw)
+  tft.setTextSize(8);
+  tft.setCursor(20, 20);
+  tft.print(timeDigits);
+  //tft.unloadFont(); // To recover RAM
+}
+void RenderWeatherDetail(char* report)
 {
   char icon[32], jpegName[40];  // jpegName must be at least 5 chars longer than icon
   char period[6], synopsis[64];
+  char windDir[6], windSpeed[10];
+  int windDegrees;
+  
+  Serial.println("Weather Detail");
+  // Parse the report as Python dict, as {<key>:<value>,...}
+  GetDictVal(report, "period", period);
+  GetDictVal(report, "windDir", windDir);
+  GetDictVal(report, "windSpeed", windSpeed);
+  GetDictVal(report, "synopsis", synopsis);
+  // Convert windDir into icon name for wind arrows
+  windDegrees = (atoi(windDir) / 45); // Get direction to nearest 45'
+  switch (windDegrees) {
+    case 0: strcpy(icon, "North"); break;
+    case 1: strcpy(icon, "NorthEast"); break;
+    case 2: strcpy(icon, "East"); break;
+    case 3: strcpy(icon, "SouthEast"); break;
+    case 4: strcpy(icon, "South"); break;
+    case 5: strcpy(icon, "SouthWest"); break;
+    case 6: strcpy(icon, "West"); break;
+    case 7: strcpy(icon, "NorthWest"); break;
+  }
+  Serial.println(icon);
+  strcpy(icon, "NorthEast");  // Fudge since I only have a few icons yet
+  // Display the results
+  tft.fillScreen(TFT_WHITE);
+  tft.setRotation(1);
+  tft.setTextColor(TFT_BLACK, TFT_WHITE);
+  tft.setTextDatum(MC_DATUM);
+  jpegName[0] = '\0';
+  strcpy(jpegName, "/");
+  strcat(jpegName, icon);
+  strcat(jpegName, ".jpg");
+  Serial.print("Wind Jpeg:"); Serial.println(jpegName);
+  fex.drawJpeg(jpegName, 0,3, nullptr);  // Draw JPEG directly to screen
+  tft.loadFont("NotoSansBold36");   // Name of font file (library adds leading / and .vlw)
+  tft.setCursor(150, 10);
+  tft.print(period);
+  tft.unloadFont(); // To recover RAM
+  tft.loadFont("NotoSansBold15");   // Name of font file (library adds leading / and .vlw)
+  tft.setCursor(27, 27);  // Middle of wind icon
+  tft.print(windSpeed);
+  tft.setCursor(10, 70);
+  tft.print(synopsis);
+  tft.unloadFont(); // To recover RAM
+}
+
+void RenderWeather(char* report)
+{
+  char icon[32], jpegName[40];  // jpegName must be at least 5 chars longer than icon
+  char period[6];
   char minTemp[5], maxTemp[5];
   
-  Serial.print("Weather Report:"); Serial.println(weatherReport);
-  if (*weatherReport != '{') {
-    Serial.println("Not a dict!");
-    return;
-  }
-  // Parse the weatherReport (as Python dict, as <key>:<value>,<key>:<value>)
-  GetDictVal(weatherReport, "period", period);
-  GetDictVal(weatherReport, "icon", icon);
-  GetDictVal(weatherReport, "maxTemp", maxTemp);
-  GetDictVal(weatherReport, "minTemp", minTemp);
+  Serial.println("Weather Report");
+  // Parse the report as Python dict, as {<key>:<value>,...}
+  GetDictVal(report, "period", period);
+  GetDictVal(report, "icon", icon);
+  GetDictVal(report, "maxTemp", maxTemp);
+  GetDictVal(report, "minTemp", minTemp);
   // Display the results
   tft.fillScreen(TFT_WHITE);
   tft.loadFont("NotoSansBold36");   // Name of font file (library adds leading / and .vlw)
   tft.setRotation(1);
   tft.setTextColor(TFT_BLACK, TFT_WHITE);
   tft.setTextDatum(MC_DATUM);
-  //tft.setTextSize(4);
   jpegName[0] = '\0';
   strcpy(jpegName, "/");
   strcat(jpegName, icon);
   strcat(jpegName, ".jpg");
-  Serial.print("Jpeg:"); Serial.println(jpegName);
+  Serial.print("Cloud Jpeg:"); Serial.println(jpegName);
   fex.drawJpeg(jpegName, 0,3, nullptr);  // Draw JPEG directly to screen
   tft.setCursor(150, 10);
   tft.print(period);
@@ -333,11 +332,25 @@ void loop()
 {
   unsigned long newMillis, elapsedMillis;
   unsigned int reportIndex;
-  char weatherReport[512];  // Arbitrary maximum length of weatherReport
-  if (btnClick) {
-    showVoltage();
-  }
+  bool redraw;
+  char serverReport[512];  // Arbitrary maximum length of serverReport
+
   button_loop();
+  redraw = false;
+  if (topBtnTap) {
+    topBtnTap = false;  // Acknowledge tap now
+    switch (fn) {
+      case DISPLAY_WEATHER: fn = DISPLAY_TIME; break;
+      case DISPLAY_TIME: fn = DISPLAY_WEATHER; break;
+    }
+    more = false; // New functions always start with overview
+    redraw = true;
+  }
+  if (btmBtnTap) {
+    btmBtnTap = false;  // Acknowledge tap now
+    more ^= true; // flip between true & false
+    redraw = true;
+  }
   newMillis = millis();
   elapsedMillis = newMillis-oldMillis;
   oldMillis = newMillis;
@@ -348,20 +361,36 @@ void loop()
     //if (status == WL_CONNECTED) {
     if (!client.connected()) {
       if (!client.connect(server, port)) { // Taken from https://www.arduino.cc/en/Tutorial/WiFiWebClient
-        tft.println("Cannot re-connect");
-        while (1);  // Loop forever
+        tft.println("Cannot re-connect!");
+        while (1);  // Loop forever.  ToDo: Fix this to re-connect
       }// else Serial.println("Reconnected!");
     }
     reportIndex = 0;
-    weatherReport[reportIndex] = '\0';
+    serverReport[reportIndex] = '\0';
     if (client.available()) {  // If there's some text waiting from the socket...
-      millisUntilReport = 10*60*1000; // 10 mins until next report, now that we've seen the report
+      millisUntilReport = 10*1000; // 10 secs until next report, now that we've seen the report
       while (client.available()) {  // If there's some text waiting from the socket...
         char ch = client.read();
-        weatherReport[reportIndex++] = ch;
+        serverReport[reportIndex++] = ch;
       }
+      redraw = true;  // Got a new report, so force a redraw
+      Serial.print("New report from server:"); Serial.println(serverReport);
     } else millisUntilReport = 1000; // Try again in a second if there's no report
-    RenderWeather(weatherReport);
   }
-  //} else Serial.println("Client not connected via WiFi");
+  if (redraw) {
+    // Should check for more and fn to work out what to display
+    switch (fn) {
+    case DISPLAY_WEATHER:
+      if (more) {
+        RenderWeatherDetail(serverReport);
+      } else {  // less
+        RenderWeather(serverReport);
+      }
+      break;
+    case DISPLAY_TIME:
+      Serial.println("Render Time");
+      RenderTimeDigits(serverReport);
+      break;
+    }
+  }
 }
