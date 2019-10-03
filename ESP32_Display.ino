@@ -212,7 +212,8 @@ char* FindItem(char* dict, char* item)
       } //else Serial.println("Advance to next item...");
       dict++; // Advance beyond start of this item in order to get to next one...
     }
-  } else Serial.println("Not a dict!");
+  }
+  Serial.println("Not a dict!");
   return 0; // Indicate we've not found the item
 }
 
@@ -239,12 +240,13 @@ void RenderTimeDigits(char* report)
   tft.setRotation(1);
   tft.setTextColor(TFT_BLACK, TFT_WHITE);
   tft.setTextDatum(MC_DATUM);
-  //tft.loadFont("NotoSansBold36");   // Name of font file (library adds leading / and .vlw)
-  tft.setTextSize(8);
+  tft.loadFont("Cambria-Bold-72");   // Name of font file (library adds leading / and .vlw)
+  //tft.setTextSize(8); // Very blocky
   tft.setCursor(20, 20);
   tft.print(timeDigits);
-  //tft.unloadFont(); // To recover RAM
+  tft.unloadFont(); // To recover RAM
 }
+
 void RenderWeatherDetail(char* report)
 {
   char icon[32], jpegName[40];  // jpegName must be at least 5 chars longer than icon
@@ -259,6 +261,7 @@ void RenderWeatherDetail(char* report)
   GetDictVal(report, "windSpeed", windSpeed);
   GetDictVal(report, "synopsis", synopsis);
   // Convert windDir into icon name for wind arrows
+  if (!strcmp(synopsis, "N/A")) return;
   windDegrees = (atoi(windDir) / 45); // Get direction to nearest 45'
   switch (windDegrees) {
     case 0: strcpy(icon, "North"); break;
@@ -287,8 +290,8 @@ void RenderWeatherDetail(char* report)
   tft.setCursor(150, 10);
   tft.print(period);
   tft.unloadFont(); // To recover RAM
-  tft.loadFont("NotoSansBold15");   // Name of font file (library adds leading / and .vlw)
-  tft.setCursor(27, 27);  // Middle of wind icon
+  tft.loadFont("Cambria-24");  //was NotoSansBold15");   // Name of font file (library adds leading / and .vlw)
+  tft.setCursor(22, 27); // was 27, 27);  // Middle of wind icon
   tft.print(windSpeed);
   tft.setCursor(10, 70);
   tft.print(synopsis);
@@ -307,6 +310,7 @@ void RenderWeather(char* report)
   GetDictVal(report, "icon", icon);
   GetDictVal(report, "maxTemp", maxTemp);
   GetDictVal(report, "minTemp", minTemp);
+  if (!strcmp(icon, "N/A")) return;
   // Display the results
   tft.fillScreen(TFT_WHITE);
   tft.loadFont("NotoSansBold36");   // Name of font file (library adds leading / and .vlw)
