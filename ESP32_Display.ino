@@ -229,12 +229,45 @@ void GetDictVal(char* dict, char* item, char* val)
   }
 }
 
+void RenderTimeDetail(char* report)
+{
+  char timeText[32];
+  char monthText[20], dayOfMonthText[5], dayOfWeekText[12];
+  int pix;
+  
+  Serial.println("Time text");
+  // Parse the report as Python dict, as {<key>:<value>,...}
+  GetDictVal(report, "timeText", timeText);
+  GetDictVal(report, "dayOfWeekText", dayOfWeekText);
+  GetDictVal(report, "dayOfMonthText", dayOfMonthText);
+  GetDictVal(report, "monthText", monthText);
+  tft.fillScreen(TFT_WHITE);
+  tft.setRotation(1);
+  tft.setTextColor(TFT_BLACK, TFT_WHITE);
+  tft.setTextDatum(MC_DATUM);
+  tft.loadFont("Cambria-24");   // Name of font file (library adds leading / and .vlw)
+  pix = tft.textWidth(timeText);
+  tft.setCursor((120 - pix/ 2), 20);
+  tft.print(timeText);
+  tft.setCursor(10, 110);
+  tft.print(dayOfWeekText);
+  tft.print(", ");
+  tft.print(dayOfMonthText);
+  tft.print(" ");
+  tft.print(monthText);
+  tft.unloadFont(); // To recover RAM 
+}
+
 void RenderTimeDigits(char* report)
 {
   char timeDigits[6];
+  char monthText[20], dayOfMonthText[5], dayOfWeekText[12];
   
   Serial.println("Time digits");
   // Parse the report as Python dict, as {<key>:<value>,...}
+  GetDictVal(report, "dayOfWeekText", dayOfWeekText);
+  GetDictVal(report, "dayOfMonthText", dayOfMonthText);
+  GetDictVal(report, "monthText", monthText);
   GetDictVal(report, "timeDigits", timeDigits);
   tft.fillScreen(TFT_WHITE);
   tft.setRotation(1);
@@ -245,13 +278,21 @@ void RenderTimeDigits(char* report)
   tft.setCursor(20, 20);
   tft.print(timeDigits);
   tft.unloadFont(); // To recover RAM
+  tft.loadFont("Cambria-24");   // Name of font file (library adds leading / and .vlw)
+  tft.setCursor(10, 110);
+  tft.print(dayOfWeekText);
+  tft.print(", ");
+  tft.print(dayOfMonthText);
+  tft.print(" ");
+  tft.print(monthText);
+  tft.unloadFont(); // To recover RAM
 }
 
 void RenderWeatherDetail(char* report)
 {
   char icon[32], jpegName[40];  // jpegName must be at least 5 chars longer than icon
-  char period[6], synopsis[64];
-  char windDir[6], windSpeed[10];
+  char period[6], cloudText[64];
+  char windDir[6], windSpeed[6], windText[64];
   int windDegrees;
   
   Serial.println("Weather Detail");
@@ -259,10 +300,11 @@ void RenderWeatherDetail(char* report)
   GetDictVal(report, "period", period);
   GetDictVal(report, "windDir", windDir);
   GetDictVal(report, "windSpeed", windSpeed);
-  GetDictVal(report, "synopsis", synopsis);
+  GetDictVal(report, "windText", windText);
+  GetDictVal(report, "cloudText", cloudText);
+  if (!strcmp(cloudText, "N/A")) return;  // Bail if no weather!
   // Convert windDir into icon name for wind arrows
-  if (!strcmp(synopsis, "N/A")) return;
-  windDegrees = (atoi(windDir) / 45); // Get direction to nearest 45'
+  windDegrees = ((atoi(windDir)+22) / 45) % 8; // Get direction to nearest 45'
   switch (windDegrees) {
     case 0: strcpy(icon, "North"); break;
     case 1: strcpy(icon, "NorthEast"); break;
@@ -274,7 +316,6 @@ void RenderWeatherDetail(char* report)
     case 7: strcpy(icon, "NorthWest"); break;
   }
   Serial.println(icon);
-  strcpy(icon, "NorthEast");  // Fudge since I only have a few icons yet
   // Display the results
   tft.fillScreen(TFT_WHITE);
   tft.setRotation(1);
@@ -291,10 +332,12 @@ void RenderWeatherDetail(char* report)
   tft.print(period);
   tft.unloadFont(); // To recover RAM
   tft.loadFont("Cambria-24");  //was NotoSansBold15");   // Name of font file (library adds leading / and .vlw)
-  tft.setCursor(22, 27); // was 27, 27);  // Middle of wind icon
+  tft.setCursor(20, 25);  // Middle of wind icon
   tft.print(windSpeed);
-  tft.setCursor(10, 70);
-  tft.print(synopsis);
+  tft.setCursor(10, 72);
+  tft.print(windText);
+  tft.setCursor(10, 94);
+  tft.print(cloudText);
   tft.unloadFont(); // To recover RAM
 }
 
@@ -393,7 +436,11 @@ void loop()
       break;
     case DISPLAY_TIME:
       Serial.println("Render Time");
-      RenderTimeDigits(serverReport);
+      if (more) {
+        RenderTimeDigits(serverReport);
+      } else { // less
+        RenderTimeDetail(serverReport);
+      }
       break;
     }
   }
