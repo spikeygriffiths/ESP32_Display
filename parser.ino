@@ -17,11 +17,13 @@ char* GetNextItem(char* dict)
 
 bool CmpItem(char* target, char* dict)
 {
+  char quoteType;
   //Serial.print("CmpItem:"); Serial.print(target);
-  while (*dict++ != '\'') ; // Get opening quote
+  while ((*dict != '\'') && (*dict != '\"')) dict++; // Get opening quote
+  quoteType = *dict++;  // Note quote type (single or double)
   //Serial.print(" in "); Serial.println(dict);
   while (*target++ == *dict++) ;  // Keep advancing until we have a mismatch
-  return ((*--target == '\0') && (*--dict == '\''));  // Return true if the target is finished and the source dict string is also finished, thus a perfect match
+  return ((*--target == '\0') && (*--dict == quoteType));  // Return true if the target is finished and the source dict string is also finished, thus a perfect match
   /*if ((*--target == '\0') && (*--dict == '\'')) {
     Serial.println("Match");
     return true;
@@ -42,8 +44,8 @@ char* FindItem(char* dict, char* item)
       if (CmpItem(item, dict)) {
         //Serial.println("Got match!");
         while (*dict++ != ':') ; // Advance beyond ':'
-        while (*dict++ != '\'') ; // and opening quote, to get to start of <val>
-        return dict;  // Now pointing to <val> associated with <item>
+        while ((*dict != '\'') && (*dict != '\"')) dict++; // Get opening quote
+        return dict;  // Now pointing to <val> associated with <item>, including opening quote
       } //else Serial.println("Advance to next item...");
       dict++; // Advance beyond start of this item in order to get to next one...
     }
@@ -55,9 +57,11 @@ char* FindItem(char* dict, char* item)
 void GetDictVal(char* dict, char* item, char* val)
 {
   char* answer;
+  char quoteType;
   answer = FindItem(dict, item);  // Try and find item in dict.  Result is pointer to beginning of <val>, immediately after opening quote
   if (answer) {
-    while (*answer != '\'') *val++ = *answer++; // Copy each character from <val> until we hit the terminating quote
+    quoteType = *answer++;  // Note quote type (single or double)
+    while (*answer != quoteType) *val++ = *answer++; // Copy each character from <val> until we hit the correct terminating quote
     *val = '\0';  // Terminate result by replacing close quote with \0
   } else {
     strcpy("N/A", val);

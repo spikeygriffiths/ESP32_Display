@@ -10,41 +10,20 @@
 #include "WiFi.h"
 #include <Wire.h>
 #include <Button2.h>
-#include "esp_adc_cal.h"
-#include "bmp.h"
-
-#ifndef TFT_DISPOFF
-#define TFT_DISPOFF 0x28
-#endif
-
-#ifndef TFT_SLPIN
-#define TFT_SLPIN   0x10
-#endif
-
-#define TFT_MOSI            19
-#define TFT_SCLK            18
-#define TFT_CS              5
-#define TFT_DC              16
-#define TFT_RST             23
-
-#define TFT_BL          4  // Display backlight control pin
-#define ADC_EN          14
-#define ADC_PIN         34
-#define BUTTON_1        35
-#define BUTTON_2        0
-
-TFT_eSPI tft = TFT_eSPI(135, 240); // Invoke custom library
-Button2 btn1(BUTTON_1);
-Button2 btn2(BUTTON_2);
+//#include "esp_adc_cal.h"
+//#include "bmp.h"
+#include "ESP32_Display.h"
 
 typedef enum {
   DISPLAY_WEATHER,
-  DISPLAY_TIME
+  DISPLAY_TIME, // Could add more functionIds here (eg House info, House power consumption, etc.)
 } DisplayFunction;
 
-// Function prototypes
-
 // Global variables
+TFT_eSPI tft = TFT_eSPI(135, 240); // Invoke custom library
+Button2 btn1(BUTTON_1);
+Button2 btn2(BUTTON_2);
+TFT_eFEX fex = TFT_eFEX(&tft);    // Create TFT_eFX object "efx" with pointer to "tft" object
 char buff[512];
 int vref = 1100;
 int btnClick = false;
@@ -55,9 +34,6 @@ bool topBtnLong, topBtnTap;
 bool btmBtnLong, btmBtnTap;
 bool more = false;
 DisplayFunction fn = DISPLAY_WEATHER;
-
-//TFT_eSPI tft = TFT_eSPI();            // Invoke custom library
-TFT_eFEX fex = TFT_eFEX(&tft);    // Create TFT_eFX object "efx" with pointer to "tft" object
 
 //! Long time delay, it is recommended to use shallow sleep, which can effectively reduce the current consumption
 void espDelay(int ms)
@@ -93,9 +69,9 @@ void setup()
 {
   Serial.begin(115200);
   Serial.println("Start");
-  //tft.init();
+  tft.init();
+  tft.setSwapBytes(true);
   //tft.setRotation(1);
-  //tft.setSwapBytes(true);
   //tft.pushImage(0, 0,  240, 135, ttgo);
   //espDelay(5000);
 

@@ -1,15 +1,9 @@
 // renderer
 
-void RenderTimeDetail(char* report)
+void GetDayText(char* report, char* dayText)
 {
-  char timeText[32];
   char monthText[20], dayOfMonthText[5], dayOfWeekText[12];
-  char dayText[32];
-  int pix;
   
-  Serial.println("Time text");
-  // Parse the report as Python dict, as {<key>:<value>,...}
-  GetDictVal(report, "timeText", timeText);
   GetDictVal(report, "dayOfWeekText", dayOfWeekText);
   GetDictVal(report, "dayOfMonthText", dayOfMonthText);
   GetDictVal(report, "monthText", monthText);
@@ -24,6 +18,18 @@ void RenderTimeDetail(char* report)
   }
   strcat(dayText, " ");
   strncat(dayText, monthText, 3); // First three characters of month
+}
+
+void RenderTimeDetail(char* report)
+{
+  char timeText[32];
+  char dayText[32];
+  int pix;
+  
+  Serial.println("Time text");
+  // Parse the report as Python dict, as {<key>:<value>,...}
+  GetDictVal(report, "timeText", timeText);
+  GetDayText(report, dayText);
   tft.fillScreen(TFT_WHITE);
   tft.setRotation(1);
   tft.setTextColor(TFT_BLACK, TFT_WHITE);
@@ -36,7 +42,6 @@ void RenderTimeDetail(char* report)
   tft.unloadFont(); // To recover RAM 
   tft.loadFont("Cambria-36");   // Name of font file (library adds leading / and .vlw)
   pix = tft.textWidth(dayText);
-  if (pix < 0) pix = 0; // Need to split text up across two lines
   tft.setCursor((120 - pix/ 2), 90);
   tft.print(dayText);
   tft.unloadFont(); // To recover RAM 
@@ -45,13 +50,12 @@ void RenderTimeDetail(char* report)
 void RenderTimeDigits(char* report)
 {
   char timeDigits[6];
-  char monthText[20], dayOfMonthText[5], dayOfWeekText[12];
+  char dayText[32];
+  int pix;
   
   Serial.println("Time digits");
   // Parse the report as Python dict, as {<key>:<value>,...}
-  GetDictVal(report, "dayOfWeekText", dayOfWeekText);
-  GetDictVal(report, "dayOfMonthText", dayOfMonthText);
-  GetDictVal(report, "monthText", monthText);
+  GetDayText(report, dayText);
   GetDictVal(report, "timeDigits", timeDigits);
   tft.fillScreen(TFT_WHITE);
   tft.setRotation(1);
@@ -59,16 +63,14 @@ void RenderTimeDigits(char* report)
   tft.setTextDatum(MC_DATUM);
   tft.loadFont("Cambria-Bold-72");   // Name of font file (library adds leading / and .vlw)
   //tft.setTextSize(8); // Very blocky
-  tft.setCursor(20, 20);
+  pix = tft.textWidth(timeDigits);
+  tft.setCursor((120 - pix/ 2), 20);
   tft.print(timeDigits);
   tft.unloadFont(); // To recover RAM
-  tft.loadFont("Cambria-24");   // Name of font file (library adds leading / and .vlw)
-  tft.setCursor(10, 110);
-  tft.print(dayOfWeekText);
-  tft.print(", ");
-  tft.print(dayOfMonthText);
-  tft.print(" ");
-  tft.print(monthText);
+  tft.loadFont("Cambria-36");   // Name of font file (library adds leading / and .vlw)
+  pix = tft.textWidth(dayText);
+  tft.setCursor((120 - pix/ 2), 90);
+  tft.print(dayText);
   tft.unloadFont(); // To recover RAM
 }
 

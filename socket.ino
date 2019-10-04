@@ -52,7 +52,6 @@ bool OpenSocket(void)
   }
 }
 
-
 bool GetReport(char* serverReport)
 {
   unsigned int reportIndex;
