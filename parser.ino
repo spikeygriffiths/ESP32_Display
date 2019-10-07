@@ -54,7 +54,7 @@ char* FindItem(char* dict, char* item)
   return 0; // Indicate we've not found the item
 }
 
-void GetDictVal(char* dict, char* item, char* val)
+bool GetDictVal(char* dict, char* item, char* val)
 {
   char* answer;
   char quoteType;
@@ -63,7 +63,9 @@ void GetDictVal(char* dict, char* item, char* val)
     quoteType = *answer++;  // Note quote type (single or double)
     while (*answer != quoteType) *val++ = *answer++; // Copy each character from <val> until we hit the correct terminating quote
     *val = '\0';  // Terminate result by replacing close quote with \0
+    return true;  // Good result
   } else {
-    strcpy("N/A", val);
+    RenderSadFace("Bad dict");
+    return false; // Bad result
   }
 }

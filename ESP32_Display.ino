@@ -19,16 +19,17 @@ typedef enum {
   DISPLAY_TIME, // Could add more functionIds here (eg House info, House power consumption, etc.)
 } DisplayFunction;
 
+#define MAX_REPORT 1024 // Arbitrary maximum length of serverReport
+
 // Global variables
-TFT_eSPI tft = TFT_eSPI(135, 240); // Invoke custom library
+TFT_eSPI tft = TFT_eSPI(TFT_WIDTH, TFT_HEIGHT); // Invoke custom library
 Button2 btn1(BUTTON_1);
 Button2 btn2(BUTTON_2);
 TFT_eFEX fex = TFT_eFEX(&tft);    // Create TFT_eFX object "efx" with pointer to "tft" object
-char buff[512];
-int vref = 1100;
-int btnClick = false;
+char serverReport[MAX_REPORT];
 unsigned long StartTime = millis();
 unsigned long oldMillis;
+unsigned long serverFail; // Count of failures to get a response from the server
 unsigned long millisUntilReport = 0;
 bool topBtnLong, topBtnTap;
 bool btmBtnLong, btmBtnTap;
@@ -71,9 +72,6 @@ void setup()
   Serial.println("Start");
   tft.init();
   tft.setSwapBytes(true);
-  //tft.setRotation(1);
-  //tft.pushImage(0, 0,  240, 135, ttgo);
-  //espDelay(5000);
 
   OpenSocket();
   button_init();
@@ -82,13 +80,13 @@ void setup()
     while (1) yield(); // Stay here twiddling thumbs waiting
   }
   fex.listSPIFFS(); // Lists the files so you can see what is in the SPIFFS
+  serverFail = 0;
 }
 
 void loop()
 {
   unsigned long newMillis, elapsedMillis;
   bool redraw;
-  char serverReport[512];  // Arbitrary maximum length of serverReport
 
   button_loop();
   redraw = false;
@@ -113,28 +111,38 @@ void loop()
     millisUntilReport -= elapsedMillis;
   else {
     if (GetReport(serverReport)) {
+      serverFail = 0;
       redraw = true;  // Got a new report, so force a redraw
       Serial.print("New report from server:"); Serial.println(serverReport);
-    } else millisUntilReport = 1000; // Try again in a second if there's no report
-  }
-  if (redraw) {
-    // Should check for more and fn to work out what to display
-    switch (fn) {
-    case DISPLAY_WEATHER:
-      if (more) {
-        RenderWeatherDetail(serverReport);
-      } else {  // less
-        RenderWeather(serverReport);
-      }
-      break;
-    case DISPLAY_TIME:
-      Serial.println("Render Time");
-      if (more) {
-        RenderTimeDetail(serverReport);
-      } else { // less
-        RenderTimeDigits(serverReport);
-      }
-      break;
+    } else {
+      serverFail++;
+      if (serverFail > 30) redraw = true; // Force a redraw
+      Serial.print("Server Fail:"); Serial.println(serverFail);
+      millisUntilReport = 1000; // Try again in a second if there's no report
     }
   }
+  if (redraw) {
+    if (serverFail > 30) {
+      RenderSadFace("Server down");
+    } else {
+      // Should check for more and fn to work out what to display
+      switch (fn) {
+      case DISPLAY_WEATHER:
+        if (more) {
+          RenderWeatherDetail(serverReport);
+        } else {  // less
+          RenderWeather(serverReport);
+        }
+        break;
+      case DISPLAY_TIME:
+        Serial.println("Render Time");
+        if (more) {
+          RenderTimeDetail(serverReport);
+        } else { // less
+          RenderTimeDigits(serverReport);
+        }
+        break;
+      } // end switch()
+    } // end if serverFail
+  } // end if redraw
 }

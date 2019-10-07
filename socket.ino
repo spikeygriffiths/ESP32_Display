@@ -41,9 +41,7 @@ bool OpenSocket(void)
 {
   if (wifi_join()) {
     if (client.connect(server, port)) { // Taken from https://www.arduino.cc/en/Tutorial/WiFiWebClient
-      tft.print("Sckt RPi/");
-      tft.println(port);
-      //client.println("Hello from ESP32!"); // Send text to socket on far side
+      tft.print("Sckt RPi/"); tft.println(port);
       return true;
     } else {
       tft.println("Server not available");
@@ -55,22 +53,24 @@ bool OpenSocket(void)
 bool GetReport(char* serverReport)
 {
   unsigned int reportIndex;
+  char newReport[MAX_REPORT];
   // Need to refresh weather report from server once/10 mins
   //if (status == WL_CONNECTED) {
   if (!client.connected()) {
     if (!client.connect(server, port)) { // Taken from https://www.arduino.cc/en/Tutorial/WiFiWebClient
-      tft.println("Cannot re-connect!");
+      RenderSadFace("Cannot re-connect!");
       while (1);  // Loop forever.  ToDo: Fix this to re-connect
     }// else Serial.println("Reconnected!");
   }
   reportIndex = 0;
-  serverReport[reportIndex] = '\0';
+  newReport[reportIndex] = '\0';
   if (client.available()) {  // If there's some text waiting from the socket...
     millisUntilReport = 10*1000; // 10 secs until next report, now that we've seen the report
     while (client.available()) {  // If there's some text waiting from the socket...
       char ch = client.read();
-      serverReport[reportIndex++] = ch;
+      newReport[reportIndex++] = ch;
     }
+    strcpy(serverReport, newReport);  // Should guard this to stop report parsing during this operation
     return true;
   }
   return false;
