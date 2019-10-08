@@ -102,7 +102,7 @@ void RenderWeatherDetail(char* report)
   char icon[32], jpegName[40];  // jpegName must be at least 5 chars longer than icon
   char period[6], cloudText[64];
   char windDir[6], windSpeed[6], windText[64];
-  int windDegrees;
+  int windDegrees, windIconX, windIconY;
   
   Serial.println("Weather Detail");
   // Parse the report as Python dict, as {<key>:<value>,...}
@@ -134,18 +134,18 @@ void RenderWeatherDetail(char* report)
   strcat(jpegName, icon);
   strcat(jpegName, ".jpg");
   Serial.print("Wind Jpeg:"); Serial.println(jpegName);
-  fex.drawJpeg(jpegName, 0,3, nullptr);  // Draw JPEG directly to screen
   tft.loadFont("Cambria-36");   // Name of font file (library adds leading / and .vlw)
-  tft.setCursor(150, 10);
+  tft.setCursor(120, 20);
   tft.print(period);
   tft.unloadFont(); // To recover RAM
   tft.loadFont("Cambria-24");  //was NotoSansBold15");   // Name of font file (library adds leading / and .vlw)
-  tft.setCursor(20, 25);  // Middle of wind icon
+  windIconX = 33;
+  windIconY = 3;
+  fex.drawJpeg(jpegName, windIconX,windIconY, nullptr);  // Draw JPEG directly to screen
+  tft.setCursor(windIconX+19, windIconY+22);  // Middle of wind icon
   tft.print(windSpeed);
-  tft.setCursor(10, 72);
-  tft.print(windText);
-  tft.setCursor(10, 94);
-  tft.print(cloudText);
+  PrettyLine(windText, 76);
+  PrettyLine(cloudText, 98);
   tft.unloadFont(); // To recover RAM
 }
 
@@ -172,7 +172,7 @@ void RenderWeather(char* report)
   strcat(jpegName, icon);
   strcat(jpegName, ".jpg");
   Serial.print("Cloud Jpeg:"); Serial.println(jpegName);
-  fex.drawJpeg(jpegName, 0,3, nullptr);  // Draw JPEG directly to screen
+  fex.drawJpeg(jpegName, 3,3, nullptr);  // Draw JPEG directly to screen
   tft.setCursor(150, 10);
   tft.print(period);
   tft.setCursor(150, 65);
