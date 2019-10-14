@@ -35,6 +35,7 @@ bool topBtnLong, topBtnTap;
 bool btmBtnLong, btmBtnTap;
 bool more = false;
 DisplayFunction fn = DISPLAY_WEATHER;
+DisplayFunction oldFn;
 
 //! Long time delay, it is recommended to use shallow sleep, which can effectively reduce the current consumption
 void espDelay(int ms)
@@ -125,24 +126,15 @@ void loop()
     if (serverFail > 30) {
       RenderSadFace("Server down");
     } else {
-      // Should check for more and fn to work out what to display
       switch (fn) {
       case DISPLAY_WEATHER:
-        if (more) {
-          RenderWeatherDetail(serverReport);
-        } else {  // less
-          RenderWeather(serverReport);
-        }
+        DisplayWeather(serverReport, more, (fn != oldFn));
         break;
       case DISPLAY_TIME:
-        Serial.println("Render Time");
-        if (more) {
-          RenderTimeDetail(serverReport);
-        } else { // less
-          RenderTimeDigits(serverReport);
-        }
+        DisplayDateTime(serverReport, more, (fn != oldFn));
         break;
       } // end switch()
+      oldFn = fn;
     } // end if serverFail
   } // end if redraw
 }

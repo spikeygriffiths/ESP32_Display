@@ -69,3 +69,13 @@ bool GetDictVal(char* dict, char* item, char* val)
     return false; // Bad result
   }
 }
+
+bool CmpDictVal(char* dict, char* item, char* oldVal) // Returns false if the oldVal is the same as the new value from the dict
+{
+  char dictVal[64];
+  if (GetDictVal(dict, item, dictVal)) {
+    //Serial.print("Comparing "); Serial.print(oldVal); Serial.print(" vs "); Serial.print(dictVal);
+    //Serial.print(" using strcmp which gives "); Serial.println(strcmp(dictVal, oldVal));
+    return (bool)strcmp(dictVal, oldVal);  // strcmp returns 0 if the same, so make that false by casting
+  } else return false;
+}

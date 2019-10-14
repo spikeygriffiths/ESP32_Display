@@ -1,0 +1,82 @@
+// DateTime
+
+char monthText[20], dayOfMonthText[5], dayOfWeekText[12];
+char timeText[32];
+char timeDigits[6];
+char dayText[32];
+int oldCustomBtn;
+
+bool GetDayText(char* report, char* dayText)
+{  
+  if (!GetDictVal(report, "dayOfWeekText", dayOfWeekText)) return false;
+  if (!GetDictVal(report, "dayOfMonthText", dayOfMonthText)) return false;
+  if (!GetDictVal(report, "monthText", monthText)) return false;
+  strncpy(dayText, dayOfWeekText, 3); // First three characters of day of week...
+  strcpy(dayText+3, ", ");
+  strcat(dayText, dayOfMonthText);
+  switch (atoi(dayOfMonthText)) {
+    case 1:
+    case 21:
+    case 31:
+      strcat(dayText, "st"); break;
+    case 2:
+    case 22:
+      strcat(dayText, "nd"); break;
+    case 3:
+    case 23:
+      strcat(dayText, "rd"); break;
+    default:
+      strcat(dayText, "th"); break;    
+  }
+  strcat(dayText, " ");
+  strncat(dayText, monthText, 3); // First three characters of month
+  return true;  // Good dayText
+}
+
+void RenderTimeDetail(char* report, bool reportChange)
+{  
+  reportChange |= CmpDictVal(report, "timeText", timeText); // Check to see if any of the values we care about have changed since last time
+  if (!reportChange) return;  // Exit if nothing changed
+  Serial.println("Time text");
+  // Parse the report as Python dict, as {<key>:<value>,...}
+  if (!GetDictVal(report, "timeText", timeText)) return;
+  if (!GetDayText(report, dayText)) return;
+  tft.fillScreen(TFT_WHITE);
+  tft.setRotation(1);
+  tft.setTextColor(TFT_BLACK, TFT_WHITE);
+  tft.setTextDatum(MC_DATUM);
+  PrettyPrint(timeText, 20, "Cambria-24");
+  tft.loadFont("Cambria-36");   // Name of font file (library adds leading / and .vlw)
+  PrettyLine(dayText, 90);
+  tft.unloadFont(); // To recover RAM 
+}
+
+void RenderTimeDigits(char* report, bool reportChange)
+{
+  reportChange |= CmpDictVal(report, "timeDigits", timeDigits); // Check to see if any of the values we care about have changed since last time
+  if (!reportChange) return;  // Exit if nothing changed
+  Serial.println("Time digits");
+  // Parse the report as Python dict, as {<key>:<value>,...}
+  if (!GetDictVal(report, "timeDigits", timeDigits)) return;
+  if (!GetDayText(report, dayText)) return;
+  tft.fillScreen(TFT_WHITE);
+  tft.setRotation(1);
+  tft.setTextColor(TFT_BLACK, TFT_WHITE);
+  tft.loadFont("Cambria-Bold-72");   // Name of font file (library adds leading / and .vlw)
+  PrettyLine(timeDigits, 20);
+  tft.unloadFont(); // To recover RAM
+  tft.loadFont("Cambria-36");   // Name of font file (library adds leading / and .vlw)
+  PrettyLine(dayText, 90);
+  tft.unloadFont(); // To recover RAM
+}
+
+void DisplayDateTime(char* report, int customBtn, bool forceRedraw)
+{
+  bool reportChange = (customBtn != oldCustomBtn) | forceRedraw;
+  oldCustomBtn = customBtn;
+  if (customBtn) {
+    RenderTimeDetail(report, reportChange);
+  } else { // less
+    RenderTimeDigits(report, reportChange);
+  }
+}
