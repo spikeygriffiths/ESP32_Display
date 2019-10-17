@@ -39,7 +39,7 @@ bool GetDayText(char* report, char* dayText)
 void RenderTimeDetail(char* report, bool reportChange)
 {
   char lines[NUM_TIMELINES][MAX_TIMELINELEN];
-  int index, endLine, lineIndex, startY;
+  int index, endLine, lineIndex, startY, justify;
   reportChange |= CmpDictVal(report, "timeText", timeText); // Check to see if any of the values we care about have changed since last time
   if (!reportChange) return;  // Exit if nothing changed
   Debug("Time text"); DebugLn();
@@ -65,16 +65,13 @@ void RenderTimeDetail(char* report, bool reportChange)
   tft.setTextDatum(MC_DATUM);
   startY = (lines[0][0]) ? 15 : 35; // Start lower down if first line is empty (eg for "One o'clock")
   tft.loadFont("Cambria-36");   // Name of font file (library adds leading / and .vlw)
+  justify = JUSTIFY_LEFT;
   for (lineIndex = 0; lineIndex < NUM_TIMELINES; lineIndex++) {
     if (lines[lineIndex][0]) {  // Don't print empty lines
-      startY += PrettyLine(lines[lineIndex], startY);
+      startY += PrettyLine(lines[lineIndex], startY, justify++);  // Rely on justification going from left, to centre to right
     }
   }
   tft.unloadFont(); // To recover RAM 
-  //PrettyPrint(timeText, 20, "Cambria-36");
-  //tft.loadFont("Cambria-36");   // Name of font file (library adds leading / and .vlw)
-  //PrettyLine(dayText, 90);
-  //tft.unloadFont(); // To recover RAM 
 }
 
 void RenderTimeDigits(char* report, bool reportChange)
@@ -89,10 +86,10 @@ void RenderTimeDigits(char* report, bool reportChange)
   tft.setRotation(1);
   tft.setTextColor(TFT_BLACK, TFT_WHITE);
   tft.loadFont("Cambria-Bold-72");   // Name of font file (library adds leading / and .vlw)
-  PrettyLine(timeDigits, 20);
+  PrettyLine(timeDigits, 20, JUSTIFY_CENTRE);
   tft.unloadFont(); // To recover RAM
   tft.loadFont("Cambria-36");   // Name of font file (library adds leading / and .vlw)
-  PrettyLine(dayText, 90);
+  PrettyLine(dayText, 90, JUSTIFY_CENTRE);
   tft.unloadFont(); // To recover RAM
 }
 

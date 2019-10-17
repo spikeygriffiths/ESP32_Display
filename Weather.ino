@@ -55,8 +55,8 @@ void RenderWeatherDetail(char* report, bool reportChange)
   fex.drawJpeg(jpegName, windIconX,windIconY, nullptr);  // Draw JPEG directly to screen
   tft.setCursor(windIconX+19, windIconY+22);  // Middle of wind icon
   tft.print(windSpeed);
-  PrettyLine(windText, 76);
-  PrettyLine(cloudText, 98);
+  PrettyLine(windText, 76, JUSTIFY_CENTRE);
+  PrettyLine(cloudText, 98, JUSTIFY_CENTRE);
   tft.unloadFont(); // To recover RAM
 }
 

@@ -19,6 +19,11 @@ typedef enum {
   DISPLAY_TIME, // Could add more functionIds here (eg House info, House power consumption, etc.)
 } DisplayFunction;
 
+// For PrettyLine routine
+#define JUSTIFY_LEFT -1
+#define JUSTIFY_CENTRE 0
+#define JUSTIFY_RIGHT 1
+
 #define MAX_REPORT 1024 // Arbitrary maximum length of serverReport
 
 // Global variables

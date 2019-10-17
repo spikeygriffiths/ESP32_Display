@@ -1,9 +1,21 @@
 // renderer
 
-int PrettyLine(char* text, int startY)
+int PrettyLine(char* text, int startY, int justify)
 {
-  int startX = 120 - (tft.textWidth(text)/ 2); // Screen centre is 120
-  tft.setCursor(startX, startY);  // Screen centre is 120
+  int textW = tft.textWidth(text);
+  int startX;
+  switch (justify) {
+  case JUSTIFY_LEFT:
+    startX = 10;
+    break;
+  case JUSTIFY_CENTRE:
+    startX = 120 - (textW / 2); // Screen centre is 120
+    break;
+  case JUSTIFY_RIGHT:
+    startX = 230 - textW; // Screen width is 240, but don't go right to edge
+    break;
+  }
+  tft.setCursor(startX, startY);
   tft.print(text);
   return (tft.fontHeight() * 12) / 10;  // Return height of text line, with extra gap for readability
 }
@@ -17,7 +29,7 @@ bool PrettyCheck(char** pText, int* pTextY, char** pTextEnd, char** pLastTextEnd
     return false; // We didn't print
   } else {  // Line is too long, so go back to last good line and print that
     **pLastTextEnd = '\0';  // Terminate the earlier string that did fit
-    *pTextY += PrettyLine(*pText, *pTextY);
+    *pTextY += PrettyLine(*pText, *pTextY, JUSTIFY_CENTRE);
     *pText = *pLastTextEnd+1;  // Point just beyond the old space (now a terminator), 
     *pTextEnd = *pText-1;
     *pLastTextEnd = *pTextEnd;  // Update last end to be
@@ -55,7 +67,7 @@ void RenderFace(char* face, char* reason)
   tft.setTextColor(TFT_BLACK, TFT_WHITE);
   fex.drawJpeg("/SadFace.jpg", 120 - 48,3, nullptr);  // Draw JPEG directly to screen
   tft.loadFont("Cambria-24");   // Name of font file (library adds leading / and .vlw)
-  PrettyLine(reason, 100);
+  PrettyLine(reason, 100, JUSTIFY_CENTRE);
   tft.unloadFont(); // To recover RAM
 }
 
