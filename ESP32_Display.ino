@@ -48,16 +48,17 @@ void espDelay(int ms)
 void button_init()
 {
   btn1.setLongClickHandler([](Button2 & b) {
+    Debug("Top Btn Long\r\n");
     topBtnLong = true;
   });
 
   btn1.setPressedHandler([](Button2 & b) {
-    Serial.println("Top Btn tap");
+    Debug("Top Btn tap\r\n");
     topBtnTap = true;
   });
 
   btn2.setPressedHandler([](Button2 & b) {
-    Serial.println("Btm Btn tap");
+    Debug("Btm Btn tap\r\n");
     btmBtnTap = true;
   });
 }
@@ -67,17 +68,19 @@ void button_loop()
   btn1.loop();
   btn2.loop();
 }
+
 void setup()
 {
   Serial.begin(115200);
-  Serial.println("Start");
+  Debug("Start\r\n");
   tft.init();
   tft.setSwapBytes(true);
 
   OpenSocket();
   button_init();
   if (!SPIFFS.begin()) {
-    Serial.println("SPIFFS initialisation failed!");
+    Debug("SPIFFS initialisation failed!\r\n");
+    // ToDo: Show something on the display!
     while (1) yield(); // Stay here twiddling thumbs waiting
   }
   fex.listSPIFFS(); // Lists the files so you can see what is in the SPIFFS
@@ -114,11 +117,11 @@ void loop()
     if (GetReport(serverReport)) {
       serverFail = 0;
       redraw = true;  // Got a new report, so force a redraw
-      Serial.print("New report from server:"); Serial.println(serverReport);
+      Debug("New report from server:"); Debug(serverReport); Debug("\r\n");
     } else {
       serverFail++;
       if (serverFail > 30) redraw = true; // Force a redraw
-      Serial.print("Server Fail:"); Serial.println(serverFail);
+      Debug("Server Fail:"); DebugDec(serverFail); Debug("\r\n");
       millisUntilReport = 1000; // Try again in a second if there's no report
     }
   }

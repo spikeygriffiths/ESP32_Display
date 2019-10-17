@@ -16,7 +16,7 @@ void RenderWeatherDetail(char* report, bool reportChange)
   reportChange |= CmpDictVal(report, "windText", windText);
   reportChange |= CmpDictVal(report, "cloudText", cloudText);
   if (!reportChange) return;  // Exit if nothing changed
-  Serial.println("Weather Detail");
+  Debug("Weather Detail"); DebugLn();
   // Parse the report as Python dict, as {<key>:<value>,...}
   if (!GetDictVal(report, "period", period)) return;
   if (!GetDictVal(report, "windDir", windDir)) return;
@@ -35,7 +35,6 @@ void RenderWeatherDetail(char* report, bool reportChange)
     case 6: strcpy(icon, "West"); break;
     case 7: strcpy(icon, "NorthWest"); break;
   }
-  Serial.println(icon);
   // Display the results
   tft.fillScreen(TFT_WHITE);
   tft.setRotation(1);
@@ -45,7 +44,7 @@ void RenderWeatherDetail(char* report, bool reportChange)
   strcpy(jpegName, "/");
   strcat(jpegName, icon);
   strcat(jpegName, ".jpg");
-  Serial.print("Wind Jpeg:"); Serial.println(jpegName);
+  Debug("Wind Jpeg:"); Debug(jpegName); DebugLn();
   tft.loadFont("Cambria-36");   // Name of font file (library adds leading / and .vlw)
   tft.setCursor(120, 20);
   tft.print(period);
@@ -70,7 +69,7 @@ void RenderWeather(char* report, bool reportChange)
   reportChange |= CmpDictVal(report, "maxTemp", maxTemp);
   reportChange |= CmpDictVal(report, "minTemp", minTemp);
   if (!reportChange) return;  // Exit if nothing changed
-  Serial.println("Weather Report");
+  Debug("Weather Report"); DebugLn();
   if (!GetDictVal(report, "period", period)) return;
   if (!GetDictVal(report, "icon", icon)) return;
   if (!GetDictVal(report, "maxTemp", maxTemp)) return;
@@ -85,7 +84,7 @@ void RenderWeather(char* report, bool reportChange)
   strcpy(jpegName, "/");
   strcat(jpegName, icon);
   strcat(jpegName, ".jpg");
-  Serial.print("Cloud Jpeg:"); Serial.println(jpegName);
+  Debug("Cloud Jpeg:"); Debug(jpegName); DebugLn();
   fex.drawJpeg(jpegName, 3,3, nullptr);  // Draw JPEG directly to screen
   tft.setCursor(150, 10);
   tft.print(period);

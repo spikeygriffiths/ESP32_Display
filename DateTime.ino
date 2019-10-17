@@ -33,29 +33,55 @@ bool GetDayText(char* report, char* dayText)
   return true;  // Good dayText
 }
 
+#define NUM_TIMELINES 3
+#define MAX_TIMELINELEN 20
+
 void RenderTimeDetail(char* report, bool reportChange)
-{  
+{
+  char lines[NUM_TIMELINES][MAX_TIMELINELEN];
+  int index, endLine, lineIndex, startY;
   reportChange |= CmpDictVal(report, "timeText", timeText); // Check to see if any of the values we care about have changed since last time
   if (!reportChange) return;  // Exit if nothing changed
-  Serial.println("Time text");
+  Debug("Time text"); DebugLn();
   // Parse the report as Python dict, as {<key>:<value>,...}
   if (!GetDictVal(report, "timeText", timeText)) return;
-  if (!GetDayText(report, dayText)) return;
+  //if (!GetDayText(report, dayText)) return;
+  for (lineIndex = 0; lineIndex < NUM_TIMELINES; lineIndex++) {
+    memset(lines[lineIndex], 0, MAX_TIMELINELEN); // Fill all lines with zeros so that any strings copied in will be auto-terminated, and so we can see how many lines are made up at the end
+  }
+  index = strlen(timeText); // Go backwards through timeText, looking for spaces and copy fragments into line1,2,3
+  endLine = index;
+  lineIndex = NUM_TIMELINES-1;  // Start at last line
+  while ((--index) && (lineIndex)) {
+    if (timeText[index] == ' ') {
+      memcpy(lines[lineIndex--], &timeText[index+1], endLine - index);
+      endLine = index-1;  // Note where new end of line will be, ignoring space
+    }
+  }
+  memcpy(lines[lineIndex], &timeText, endLine+1);
   tft.fillScreen(TFT_WHITE);
   tft.setRotation(1);
   tft.setTextColor(TFT_BLACK, TFT_WHITE);
   tft.setTextDatum(MC_DATUM);
-  PrettyPrint(timeText, 20, "Cambria-24");
+  startY = (lines[0][0]) ? 15 : 35; // Start lower down if first line is empty (eg for "One o'clock")
   tft.loadFont("Cambria-36");   // Name of font file (library adds leading / and .vlw)
-  PrettyLine(dayText, 90);
+  for (lineIndex = 0; lineIndex < NUM_TIMELINES; lineIndex++) {
+    if (lines[lineIndex][0]) {  // Don't print empty lines
+      startY += PrettyLine(lines[lineIndex], startY);
+    }
+  }
   tft.unloadFont(); // To recover RAM 
+  //PrettyPrint(timeText, 20, "Cambria-36");
+  //tft.loadFont("Cambria-36");   // Name of font file (library adds leading / and .vlw)
+  //PrettyLine(dayText, 90);
+  //tft.unloadFont(); // To recover RAM 
 }
 
 void RenderTimeDigits(char* report, bool reportChange)
 {
   reportChange |= CmpDictVal(report, "timeDigits", timeDigits); // Check to see if any of the values we care about have changed since last time
   if (!reportChange) return;  // Exit if nothing changed
-  Serial.println("Time digits");
+  Debug("Time digits "); Debug(timeDigits); DebugLn();
   // Parse the report as Python dict, as {<key>:<value>,...}
   if (!GetDictVal(report, "timeDigits", timeDigits)) return;
   if (!GetDayText(report, dayText)) return;

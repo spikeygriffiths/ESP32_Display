@@ -7,7 +7,7 @@ char* GetNextItem(char* dict)
   while (ch = *dict++) {
     if (ch == ',') break; // Advance beyond ',' to next <item>:<val> pair
     if (('}' == ch) || ('{' == ch)) {
-      //Serial.println(", found start or end of dict");
+      //Debug(", found start or end of dict"); DebugLn();
       return dict-1;  // Stop at start or end of dict
     }
   }
@@ -18,25 +18,24 @@ char* GetNextItem(char* dict)
 bool CmpItem(char* target, char* dict)
 {
   char quoteType;
-  //Serial.print("CmpItem:"); Serial.print(target);
+  //Debug("CmpItem:"); Debug(target);
   while ((*dict != '\'') && (*dict != '\"')) dict++; // Get opening quote
   quoteType = *dict++;  // Note quote type (single or double)
-  //Serial.print(" in "); Serial.println(dict);
+  //Debug(" in "); Debug(dict); DebugLn();
   while (*target++ == *dict++) ;  // Keep advancing until we have a mismatch
   return ((*--target == '\0') && (*--dict == quoteType));  // Return true if the target is finished and the source dict string is also finished, thus a perfect match
   /*if ((*--target == '\0') && (*--dict == '\'')) {
-    Serial.println("Match");
+    Debug("Match"); DebugLn();
     return true;
   } else {
-    Serial.print("No match with ");
-    Serial.println(*dict);
+    Debug("No match with "); Debug(*dict); DebugLn();
     return false;
   }*/
 }
 
 char* FindItem(char* dict, char* item)
 {
-  Serial.print("FindItem:"); Serial.println(item);
+  Debug("FindItem:"); Debug(item); DebugLn();
   if ('{' == *dict) { // First char of dict is opening curly brace, so skip it
     while ('}' != *dict) {  // Exit if we reach the end of the dict
       dict = GetNextItem(dict); // Advance dict to start of <item> (after comma), or to close curly brace
@@ -50,7 +49,7 @@ char* FindItem(char* dict, char* item)
       dict++; // Advance beyond start of this item in order to get to next one...
     }
   }
-  Serial.println("Not a dict!");
+  Debug("Not a dict!"); DebugLn();
   return 0; // Indicate we've not found the item
 }
 
