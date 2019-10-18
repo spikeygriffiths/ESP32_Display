@@ -65,7 +65,7 @@ void RenderTimeDetail(char* report, bool reportChange)
   tft.setTextDatum(MC_DATUM);
   startY = (lines[0][0]) ? 15 : 35; // Start lower down if first line is empty (eg for "One o'clock")
   tft.loadFont("Cambria-36");   // Name of font file (library adds leading / and .vlw)
-  justify = JUSTIFY_LEFT;
+  justify = (lines[0][0]) ? JUSTIFY_LEFT : JUSTIFY_CENTRE;
   for (lineIndex = 0; lineIndex < NUM_TIMELINES; lineIndex++) {
     if (lines[lineIndex][0]) {  // Don't print empty lines
       startY += PrettyLine(lines[lineIndex], startY, justify++);  // Rely on justification going from left, to centre to right

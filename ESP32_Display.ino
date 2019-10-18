@@ -15,6 +15,7 @@
 #include "ESP32_Display.h"
 
 typedef enum {
+  DISPLAY_NULL, // Used to force a display redraw after server comes back up
   DISPLAY_WEATHER,
   DISPLAY_TIME, // Could add more functionIds here (eg House info, House power consumption, etc.)
 } DisplayFunction;
@@ -120,6 +121,7 @@ void loop()
     millisUntilReport -= elapsedMillis;
   else {
     if (GetReport(serverReport)) {
+      if (serverFail) oldFn = DISPLAY_NULL; // If the server was previously down, then force a re-draw now that it's come back up
       serverFail = 0;
       redraw = true;  // Got a new report, so force a redraw
       Debug("New report from server:"); Debug(serverReport); Debug("\r\n");
