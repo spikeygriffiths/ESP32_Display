@@ -44,7 +44,8 @@ void button_init()
 void _OSIssueEvent(EVENT eventId, long eventArg)
 {
   OSEventHandler(eventId, eventArg);
-  SocketEventHandler(eventId, eventArg);
+  BleEventHandler(eventId, eventArg);
+  WiFiEventHandler(eventId, eventArg);
   RendererEventHandler(eventId, eventArg);
 }
 

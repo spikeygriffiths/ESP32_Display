@@ -30,7 +30,7 @@ SCKSTATE NewSckState(SCKSTATE newState)
   return sckState;
 }
 
-void SocketEventHandler(EVENT eventId, long eventArg)
+void WiFiEventHandler(EVENT eventId, long eventArg)
 {
   switch (eventId) {
   case EVENT_POSTINIT:
