@@ -11,7 +11,14 @@ void DebugDec(int val)
   Debug(itoa(val, strVal, 10)); // Show value in decimal
 }
 
-void DebugLn(void)
+void DebugLn(char* msg)
 {
+  Debug(msg);
+  Debug("\r\n");
+}
+
+void DebugDecLn(int val)
+{
+  DebugDec(val);
   Debug("\r\n");
 }

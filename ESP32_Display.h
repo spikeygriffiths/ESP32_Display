@@ -64,3 +64,53 @@
 #define SPI_TOUCH_FREQUENCY  2500000
 
 // #define SUPPORT_TRANSACTIONS
+
+typedef enum {
+  EVENT_INIT, // No arg
+  EVENT_POSTINIT, // No arg
+  EVENT_TICK, // Arg is ms since last EVENT_TICK
+  EVENT_SEC,  // Arg is secs since last EVENT_SEC
+  EVENT_SOCKET,  // Arg is SCKSTATE
+  EVENT_BUTTON, // Arg is BUTTON
+  EVENT_REPORT, // Arg is pointer to new report
+  EVENT_DISPLAY, // Arg is DISPLAY_xxx
+} EVENT;
+
+typedef enum {
+  BTN_FUNC_TAP,
+  BTN_FUNC_LONG,
+  BTN_FUNC_DOUBLE,
+  BTN_CUSTOM_TAP,
+  BTN_CUSTOM_LONG,
+  BTN_CUSTOM_DOUBLE,
+} BUTTON;
+
+typedef enum {
+  DISPLAYID_NULL, // Used to force a display redraw after server comes back up
+  DISPLAYID_FACE, // For happy or sad faces
+  DISPLAYID_WEATHER,
+  DISPLAYID_TIME, // Could add more functionIds here (eg House info, House power consumption, etc.)
+} DISPLAYID;
+
+typedef enum {
+  SCKSTATE_JOINING, // Keep trying to join network
+  SCKSTATE_DISCONNECTING, // In case we can't join after a number of tries.  Disconnects, then restarts JOINING
+  SCKSTATE_CONNECTING,  // Finding socket on server
+  SCKSTATE_CONNECTED, // All ready to start getting reports from server
+} SCKSTATE;
+
+// For PrettyLine routine
+#define JUSTIFY_LEFT -1
+#define JUSTIFY_CENTRE 0
+#define JUSTIFY_RIGHT 1
+#define TFT_MARGIN 10 // To stop text starting or ending right at the edge
+
+#define MAX_REPORT 1024 // Arbitrary maximum length of serverReport
+
+#define OSIssueEvent(evId, evArg) _OSIssueEvent(evId, (long)evArg)
+
+// Global function prototypes
+void _OSIssueEvent(EVENT eventId, long eventArg);
+void OSEventHandler(EVENT eventId, long eventArg);
+void SocketEventHandler(EVENT eventId, long eventArg);
+void RendererEventHandler(EVENT eventId, long eventArg);

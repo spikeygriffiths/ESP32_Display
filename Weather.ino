@@ -4,6 +4,7 @@ char period[6], cloudText[64];
 char icon[32];
 char minTemp[5], maxTemp[5];
 char windDir[6], windSpeed[6], windText[64];
+int oldWeatherDetail;
 
 void RenderWeatherDetail(char* report, bool reportChange)
 {
@@ -16,7 +17,7 @@ void RenderWeatherDetail(char* report, bool reportChange)
   reportChange |= CmpDictVal(report, "windText", windText);
   reportChange |= CmpDictVal(report, "cloudText", cloudText);
   if (!reportChange) return;  // Exit if nothing changed
-  Debug("Weather Detail"); DebugLn();
+  DebugLn("Weather Detail");
   // Parse the report as Python dict, as {<key>:<value>,...}
   if (!GetDictVal(report, "period", period)) return;
   if (!GetDictVal(report, "windDir", windDir)) return;
@@ -44,7 +45,7 @@ void RenderWeatherDetail(char* report, bool reportChange)
   strcpy(jpegName, "/");
   strcat(jpegName, icon);
   strcat(jpegName, ".jpg");
-  Debug("Wind Jpeg:"); Debug(jpegName); DebugLn();
+  Debug("Wind Jpeg:"); DebugLn(jpegName);
   tft.loadFont("Cambria-36");   // Name of font file (library adds leading / and .vlw)
   tft.setCursor(120, 20);
   tft.print(period);
@@ -69,7 +70,7 @@ void RenderWeather(char* report, bool reportChange)
   reportChange |= CmpDictVal(report, "maxTemp", maxTemp);
   reportChange |= CmpDictVal(report, "minTemp", minTemp);
   if (!reportChange) return;  // Exit if nothing changed
-  Debug("Weather Report"); DebugLn();
+  DebugLn("Weather Report");
   if (!GetDictVal(report, "period", period)) return;
   if (!GetDictVal(report, "icon", icon)) return;
   if (!GetDictVal(report, "maxTemp", maxTemp)) return;
@@ -84,7 +85,7 @@ void RenderWeather(char* report, bool reportChange)
   strcpy(jpegName, "/");
   strcat(jpegName, icon);
   strcat(jpegName, ".jpg");
-  Debug("Cloud Jpeg:"); Debug(jpegName); DebugLn();
+  Debug("Cloud Jpeg:"); DebugLn(jpegName);
   fex.drawJpeg(jpegName, 3,3, nullptr);  // Draw JPEG directly to screen
   tft.setCursor(150, 10);
   tft.print(period);
@@ -95,11 +96,11 @@ void RenderWeather(char* report, bool reportChange)
   tft.unloadFont(); // To recover RAM
 }
 
-void DisplayWeather(char* report, int customBtn, bool forceRedraw)
+void DisplayWeather(char* report, int weatherDetail, bool forceRedraw)
 {
-  bool reportChange = (customBtn != oldCustomBtn) | forceRedraw;
-  oldCustomBtn = customBtn;
-  if (customBtn) {
+  bool reportChange = (weatherDetail != oldWeatherDetail) | forceRedraw;
+  oldWeatherDetail = weatherDetail;
+  if (weatherDetail) {
     RenderWeatherDetail(report, reportChange);
   } else {  // less
     RenderWeather(report, reportChange);

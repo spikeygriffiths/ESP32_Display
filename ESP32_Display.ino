@@ -14,34 +14,14 @@
 //#include "bmp.h"
 #include "ESP32_Display.h"
 
-typedef enum {
-  DISPLAY_NULL, // Used to force a display redraw after server comes back up
-  DISPLAY_WEATHER,
-  DISPLAY_TIME, // Could add more functionIds here (eg House info, House power consumption, etc.)
-} DisplayFunction;
-
-// For PrettyLine routine
-#define JUSTIFY_LEFT -1
-#define JUSTIFY_CENTRE 0
-#define JUSTIFY_RIGHT 1
-
-#define MAX_REPORT 1024 // Arbitrary maximum length of serverReport
-
 // Global variables
 TFT_eSPI tft = TFT_eSPI(TFT_WIDTH, TFT_HEIGHT); // Invoke custom library
 Button2 btn1(BUTTON_1);
 Button2 btn2(BUTTON_2);
 TFT_eFEX fex = TFT_eFEX(&tft);    // Create TFT_eFX object "efx" with pointer to "tft" object
 char serverReport[MAX_REPORT];
-unsigned long StartTime = millis();
-unsigned long oldMillis;
-unsigned long serverFail; // Count of failures to get a response from the server
-unsigned long millisUntilReport = 0;
-bool topBtnLong, topBtnTap;
-bool btmBtnLong, btmBtnTap;
-bool more = false;
-DisplayFunction fn = DISPLAY_WEATHER;
-DisplayFunction oldFn;
+unsigned long elapsedMs = 0;
+unsigned long oldMs;
 
 //! Long time delay, it is recommended to use shallow sleep, which can effectively reduce the current consumption
 void espDelay(int ms)
@@ -53,98 +33,61 @@ void espDelay(int ms)
 
 void button_init()
 {
-  btn1.setLongClickHandler([](Button2 & b) {
-    Debug("Top Btn Long\r\n");
-    topBtnLong = true;
-  });
-
-  btn1.setPressedHandler([](Button2 & b) {
-    Debug("Top Btn tap\r\n");
-    topBtnTap = true;
-  });
-
-  btn2.setPressedHandler([](Button2 & b) {
-    Debug("Btm Btn tap\r\n");
-    btmBtnTap = true;
-  });
+  btn1.setPressedHandler([](Button2 & b) { OSIssueEvent(EVENT_BUTTON, BTN_FUNC_TAP); });
+  btn1.setLongClickHandler([](Button2 & b) { OSIssueEvent(EVENT_BUTTON, BTN_FUNC_LONG); });
+  btn1.setDoubleClickHandler([](Button2 & b) { OSIssueEvent(EVENT_BUTTON, BTN_FUNC_DOUBLE); });
+  btn2.setPressedHandler([](Button2 & b) { OSIssueEvent(EVENT_BUTTON, BTN_CUSTOM_TAP); });
+  btn2.setLongClickHandler([](Button2 & b) { OSIssueEvent(EVENT_BUTTON, BTN_CUSTOM_LONG); });
+  btn2.setDoubleClickHandler([](Button2 & b) { OSIssueEvent(EVENT_BUTTON, BTN_CUSTOM_DOUBLE); });
 }
 
-void button_loop()
+void _OSIssueEvent(EVENT eventId, long eventArg)
 {
-  btn1.loop();
-  btn2.loop();
+  OSEventHandler(eventId, eventArg);
+  SocketEventHandler(eventId, eventArg);
+  RendererEventHandler(eventId, eventArg);
 }
 
 void setup()
 {
-  Serial.begin(115200);
-  Debug("Start\r\n");
-  tft.init();
-  tft.setSwapBytes(true);
-
-  OpenSocket();
-  button_init();
-  if (!SPIFFS.begin()) {
-    Debug("SPIFFS initialisation failed!\r\n");
-    // ToDo: Show something on the display!
-    while (1) yield(); // Stay here twiddling thumbs waiting
-  }
-  fex.listSPIFFS(); // Lists the files so you can see what is in the SPIFFS
-  serverFail = 0;
+  OSIssueEvent(EVENT_INIT, 0);
+  OSIssueEvent(EVENT_POSTINIT, 0);
 }
 
 void loop()
 {
-  unsigned long newMillis, elapsedMillis;
-  bool redraw;
+  unsigned long newMs, diffMs;
 
-  button_loop();
-  redraw = false;
-  if (topBtnTap) {
-    topBtnTap = false;  // Acknowledge tap now
-    switch (fn) {
-      case DISPLAY_WEATHER: fn = DISPLAY_TIME; break;
-      case DISPLAY_TIME: fn = DISPLAY_WEATHER; break;
-    }
-    more = false; // New functions always start with overview
-    redraw = true;
+  newMs = millis();
+  diffMs = newMs-oldMs;
+  OSIssueEvent(EVENT_TICK, diffMs);  // Arg is number of milliseconds since last event_tick
+  elapsedMs += diffMs;
+  if (elapsedMs > 1000) {
+    OSIssueEvent(EVENT_SEC, elapsedMs / 1000);  // Arg is number of seconds since last event_sec
+    elapsedMs %= 1000;  // Keep any fragments of seconds for next time
   }
-  if (btmBtnTap) {
-    btmBtnTap = false;  // Acknowledge tap now
-    more ^= true; // flip between true & false
-    redraw = true;
-  }
-  newMillis = millis();
-  elapsedMillis = newMillis-oldMillis;
-  oldMillis = newMillis;
-  if (millisUntilReport > elapsedMillis)
-    millisUntilReport -= elapsedMillis;
-  else {
-    if (GetReport(serverReport)) {
-      if (serverFail) oldFn = DISPLAY_NULL; // If the server was previously down, then force a re-draw now that it's come back up
-      serverFail = 0;
-      redraw = true;  // Got a new report, so force a redraw
-      Debug("New report from server:"); Debug(serverReport); Debug("\r\n");
+  oldMs = newMs;
+}
+
+void OSEventHandler(EVENT eventId, long eventArg)
+{
+  switch (eventId) {
+  case EVENT_INIT:
+    Serial.begin(115200); // Start debug
+    Debug("Start\r\n");
+    button_init();
+    break;
+  case EVENT_POSTINIT:
+    if (!SPIFFS.begin()) {
+      Debug("SPIFFS initialisation failed!\r\n");
+      // ToDo: Show something on the display!
     } else {
-      serverFail++;
-      if (serverFail > 30) redraw = true; // Force a redraw
-      Debug("Server Fail:"); DebugDec(serverFail); Debug("\r\n");
-      millisUntilReport = 1000; // Try again in a second if there's no report
+      fex.listSPIFFS(); // Lists the files so you can see what is in the SPIFFS
     }
+    break;
+  case EVENT_TICK:
+    btn1.loop();
+    btn2.loop();
+    break;
   }
-  if (redraw) {
-    if (serverFail > 30) {
-      RenderSadFace("Server down");
-    } else {
-      switch (fn) {
-      case DISPLAY_WEATHER:
-        DisplayWeather(serverReport, more, (fn != oldFn));
-        break;
-      case DISPLAY_TIME:
-        DisplayDateTime(serverReport, more, (fn != oldFn));
-        break;
-      } // end switch()
-      oldFn = fn;
-    } // end if serverFail
-  } // end if redraw
 }

@@ -4,7 +4,7 @@ char monthText[20], dayOfMonthText[5], dayOfWeekText[12];
 char timeText[32];
 char timeDigits[6];
 char dayText[32];
-int oldCustomBtn;
+int oldDateTimeDetail;
 
 bool GetDayText(char* report, char* dayText)
 {  
@@ -42,10 +42,8 @@ void RenderTimeDetail(char* report, bool reportChange)
   int index, endLine, lineIndex, startY, justify;
   reportChange |= CmpDictVal(report, "timeText", timeText); // Check to see if any of the values we care about have changed since last time
   if (!reportChange) return;  // Exit if nothing changed
-  Debug("Time text"); DebugLn();
-  // Parse the report as Python dict, as {<key>:<value>,...}
+  DebugLn("Time text");
   if (!GetDictVal(report, "timeText", timeText)) return;
-  //if (!GetDayText(report, dayText)) return;
   for (lineIndex = 0; lineIndex < NUM_TIMELINES; lineIndex++) {
     memset(lines[lineIndex], 0, MAX_TIMELINELEN); // Fill all lines with zeros so that any strings copied in will be auto-terminated, and so we can see how many lines are made up at the end
   }
@@ -78,7 +76,7 @@ void RenderTimeDigits(char* report, bool reportChange)
 {
   reportChange |= CmpDictVal(report, "timeDigits", timeDigits); // Check to see if any of the values we care about have changed since last time
   if (!reportChange) return;  // Exit if nothing changed
-  Debug("Time digits "); Debug(timeDigits); DebugLn();
+  Debug("Time digits "); DebugLn(timeDigits);
   // Parse the report as Python dict, as {<key>:<value>,...}
   if (!GetDictVal(report, "timeDigits", timeDigits)) return;
   if (!GetDayText(report, dayText)) return;
@@ -93,11 +91,11 @@ void RenderTimeDigits(char* report, bool reportChange)
   tft.unloadFont(); // To recover RAM
 }
 
-void DisplayDateTime(char* report, int customBtn, bool forceRedraw)
+void DisplayDateTime(char* report, int dateTimeDetail, bool forceRedraw)
 {
-  bool reportChange = (customBtn != oldCustomBtn) | forceRedraw;
-  oldCustomBtn = customBtn;
-  if (customBtn) {
+  bool reportChange = (dateTimeDetail != oldDateTimeDetail) | forceRedraw;
+  oldDateTimeDetail = dateTimeDetail;
+  if (dateTimeDetail) {
     RenderTimeDetail(report, reportChange);
   } else { // less
     RenderTimeDigits(report, reportChange);

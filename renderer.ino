@@ -1,18 +1,23 @@
 // renderer
 
+static bool more;
+static DISPLAYID displayId, oldDisplayId;
+static bool redraw;
+static bool serverAvailable;
+
 int PrettyLine(char* text, int startY, int justify)
 {
   int textW = tft.textWidth(text);
   int startX;
   switch (justify) {
   case JUSTIFY_LEFT:
-    startX = 10;
+    startX = TFT_MARGIN;
     break;
   case JUSTIFY_CENTRE:
-    startX = 120 - (textW / 2); // Screen centre is 120
+    startX = (TFT_HEIGHT/2) - (textW / 2); // Screen centre is 120
     break;
   case JUSTIFY_RIGHT:
-    startX = 230 - textW; // Screen width is 240, but don't go right to edge
+    startX = (TFT_HEIGHT-TFT_MARGIN) - textW; // Screen width is TFT_HEIGHT, but don't go right to edge
     break;
   }
   tft.setCursor(startX, startY);
@@ -22,7 +27,7 @@ int PrettyLine(char* text, int startY, int justify)
 
 bool PrettyCheck(char** pText, int* pTextY, char** pTextEnd, char** pLastTextEnd)
 {
-  int startX = 120 - (tft.textWidth(*pText)/ 2); // Screen centre is 120
+  int startX = (TFT_HEIGHT/2) - (tft.textWidth(*pText)/ 2); // Screen width is TFT_HEIGHT
   if (startX > 10) {  // If the line will nicely fit on the display
     *pLastTextEnd = *pTextEnd;  // and make a note of where it was so we can go back there
     **pTextEnd = ' ';  // Restore the space
@@ -61,14 +66,15 @@ void PrettyPrint(char* textStart, int textY, char* font) // May modify the text
 
 void RenderFace(char* face, char* reason)
 {
-  Debug(face); Debug(", "); Debug(reason); DebugLn();
+  Debug(face); Debug(", "); DebugLn(reason);
   tft.fillScreen(TFT_WHITE);
   tft.setRotation(1);
   tft.setTextColor(TFT_BLACK, TFT_WHITE);
-  fex.drawJpeg("/SadFace.jpg", 120 - 48,3, nullptr);  // Draw JPEG directly to screen
+  fex.drawJpeg(face, (TFT_HEIGHT/2) - 48,3, nullptr);  // Draw JPEG directly to screen (JPEG is 96x96, hence 48 for middle)
   tft.loadFont("Cambria-24");   // Name of font file (library adds leading / and .vlw)
   PrettyLine(reason, 100, JUSTIFY_CENTRE);
   tft.unloadFont(); // To recover RAM
+  oldDisplayId = DISPLAYID_FACE; // Will lose user-selected displayId if we change that
 }
 
 void RenderSadFace(char* reason)
@@ -79,4 +85,70 @@ void RenderSadFace(char* reason)
 void RenderHappyFace(char* reason)
 {
   RenderFace("/HappyFace.jpg", reason);
+}
+
+void RendererEventHandler(EVENT eventId, long eventArg)
+{
+  switch (eventId) {
+  case EVENT_INIT:
+    tft.init();
+    tft.setSwapBytes(true);
+    break;
+  case EVENT_POSTINIT:
+    oldDisplayId = DISPLAYID_NULL;
+    displayId = DISPLAYID_TIME; // Default at power on
+    serverAvailable = false;
+    more = false;
+    break;
+  case EVENT_SOCKET:
+    redraw = true;
+    if (SCKSTATE_DISCONNECTING == eventArg) {
+      serverAvailable = false;
+      RenderSadFace("Network down!");
+    }
+    break;
+  case EVENT_BUTTON:
+    redraw = true;
+    switch (eventArg) {
+    case BTN_FUNC_TAP:
+      if (displayId == DISPLAYID_WEATHER) displayId = DISPLAYID_TIME;
+      else if (displayId == DISPLAYID_TIME) displayId = DISPLAYID_WEATHER;
+      else displayId = DISPLAYID_TIME; // Default
+      more = false; // Default
+      break;
+    case BTN_FUNC_LONG:
+      displayId = DISPLAYID_TIME; // Default
+      break;
+    //case BTN_FUNC_DOUBLE: break;
+    case BTN_CUSTOM_TAP:
+      more ^= true;
+      break;
+    case BTN_CUSTOM_LONG:
+      more = false; // Default
+      break;
+    //case BTN_CUSTOM_DOUBLE: break;
+    }
+    break;
+  case EVENT_REPORT:
+    redraw = true;
+    serverAvailable = (bool)eventArg;
+    if (!eventArg) {
+      RenderSadFace("Server down");
+    }
+    break;
+  case EVENT_TICK:
+    if ((redraw) & (serverAvailable)) {
+      redraw = false;
+      switch (displayId) {
+      case DISPLAYID_WEATHER:
+        DisplayWeather(serverReport, more, (displayId != oldDisplayId));
+        break;
+      case DISPLAYID_TIME:
+        DisplayDateTime(serverReport, more, (displayId != oldDisplayId));
+        break;
+      } // end switch()
+      oldDisplayId = displayId;
+    }
+    break;
+  } // end switch (eventId)
 }

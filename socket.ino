@@ -1,77 +1,100 @@
 // socket
 
-int status = WL_IDLE_STATUS;     // the Wifi radio's status
 const char ssid[] = "SpikeyWiFi";
 const char pass[] = "spikeynonet";
-const IPAddress server(192,168,1,100); // numeric IP for Raspberry Pi
+const IPAddress server(192,168,1,101); // numeric IP for Raspberry Pi
 const int port = 54321;
 WiFiClient client;
+int wiFiStatus;
+SCKSTATE sckState;
+int sckTimerS, rptTimerS;
 
-bool wifi_join(void)
-{
-  int numTries = 10;
-  tft.setRotation(1);
-  while (true) {
-    tft.fillScreen(TFT_BLACK);
-    tft.setTextSize(2);
-    tft.setCursor(0, 0);
-    tft.setTextColor(TFT_GREEN, TFT_BLACK);
-    tft.println("Connecting to:"); tft.println(ssid);
-    //tft.print("pass:"); tft.println(pass); // Only print password to display for testing...
-    while ((status != WL_CONNECTED) && (--numTries != 0)) {
-      status = WiFi.begin(ssid, pass);  // Connect to WPA/WPA2 network:
-      delay(1000);    // wait for connection:
-    }
-    if (status == WL_CONNECTED) {
-      IPAddress ip = WiFi.localIP();
-      tft.print("IP:"); tft.println(ip);
-      if ((ip[0] == 192) && (ip[1] == 168)) { // Check that address allocated looks plausible
-        tft.println("Connected!");
-        return true;
-      } else tft.println("Silly IP");
-    } else tft.print("Failed to connect...");
-    WiFi.disconnect(); // was return false;, but we always want to keep retrying
-    status = WL_IDLE_STATUS;
-    delay(2000);    // wait for disconnection...
-    tft.println("Re-trying...");
-  }
-}
-
-bool OpenSocket(void)
-{
-  if (wifi_join()) {
-    if (client.connect(server, port)) { // Taken from https://www.arduino.cc/en/Tutorial/WiFiWebClient
-      tft.print("Sckt RPi/"); tft.println(port);
-      return true;
-    } else {
-      tft.println("Server not available");
-      return false;
-    }
-  }
-}
-
-bool GetReport(char* serverReport)
+void GetReport(char* serverReport)
 {
   unsigned int reportIndex;
   char newReport[MAX_REPORT];
-  // Need to refresh weather report from server once/10 mins
-  //if (status == WL_CONNECTED) {
-  if (!client.connected()) {
-    if (!client.connect(server, port)) { // Taken from https://www.arduino.cc/en/Tutorial/WiFiWebClient
-      RenderSadFace("Cannot re-connect!");
-      while (1);  // Loop forever.  ToDo: Fix this to re-connect
-    }// else Serial.println("Reconnected!");
-  }
   reportIndex = 0;
-  newReport[reportIndex] = '\0';
+  DebugLn("Get Report");
+  newReport[reportIndex] = '\0';  // Clear buffer ready to receive new report
   if (client.available()) {  // If there's some text waiting from the socket...
-    millisUntilReport = 10*1000; // 10 secs until next report, now that we've seen the report
-    while (client.available()) {  // If there's some text waiting from the socket...
-      char ch = client.read();
-      newReport[reportIndex++] = ch;
-    }
+    while (client.available()) newReport[reportIndex++] = client.read();  // Get all the text waiting for me
     strcpy(serverReport, newReport);  // Should guard this to stop report parsing during this operation
-    return true;
+    OSIssueEvent(EVENT_REPORT, serverReport);
+  } else OSIssueEvent(EVENT_REPORT, false);
+}
+
+SCKSTATE NewSckState(SCKSTATE newState)
+{
+  sckTimerS = 0;  // Restart timer whenever we change state
+  sckState = newState;
+  return sckState;
+}
+
+void SocketEventHandler(EVENT eventId, long eventArg)
+{
+  switch (eventId) {
+  case EVENT_POSTINIT:
+    wiFiStatus = WL_IDLE_STATUS;     // the Wifi radio's status
+    OSIssueEvent(EVENT_SOCKET, NewSckState(SCKSTATE_JOINING));
+    break;
+  case EVENT_SEC:
+    switch (sckState) {
+    case SCKSTATE_JOINING:
+      if (wiFiStatus != WL_CONNECTED) {
+        Debug("WiFi.begin status:"); DebugDecLn(wiFiStatus);
+        wiFiStatus = WiFi.begin(ssid, pass);  // Connect to WPA/WPA2 network:
+        if ((sckTimerS += eventArg) > 10) {
+          DebugLn("Timed out joining net - restart");
+          OSIssueEvent(EVENT_SOCKET, NewSckState(SCKSTATE_DISCONNECTING));  // Giving up and restarting from scratch
+        }
+      } else {
+        IPAddress ip = WiFi.localIP();
+        DebugLn("WiFi joined!");
+        //Debug("IP:"); DebugLn(ip);
+        if ((ip[0] == 192) && (ip[1] == 168)) { // Check that address allocated looks plausible
+          DebugLn("Good IP");
+          OSIssueEvent(EVENT_SOCKET, NewSckState(SCKSTATE_CONNECTING)); // We've joined now, so next start connecting to the socket
+        } else {
+          DebugLn("Silly IP - restart");
+          OSIssueEvent(EVENT_SOCKET, NewSckState(SCKSTATE_DISCONNECTING));  // Start all over again
+        }
+      }
+      break;
+    case SCKSTATE_DISCONNECTING:
+      DebugLn("Wifi.disconnect");
+      WiFi.disconnect();
+      wiFiStatus = WL_IDLE_STATUS;
+      OSIssueEvent(EVENT_SOCKET, NewSckState(SCKSTATE_JOINING));
+      break;
+    case SCKSTATE_CONNECTING:
+      if (client.connect(server, port)) { // Taken from https://www.arduino.cc/en/Tutorial/WiFiWebClient
+        OSIssueEvent(EVENT_SOCKET, NewSckState(SCKSTATE_CONNECTED));
+        rptTimerS = 10; // Get report ASAP!
+        DebugLn("Connected!");
+      } else {
+        if ((sckTimerS += eventArg) > 10) OSIssueEvent(EVENT_SOCKET, NewSckState(SCKSTATE_CONNECTING));
+      }
+      break;
+    case SCKSTATE_CONNECTED:
+      if ((rptTimerS += eventArg) > 10) {
+        if (client.connected()) {
+          GetReport(serverReport);
+        } else { // No longer connected
+          DebugLn("Lost connection!");
+          OSIssueEvent(EVENT_SOCKET, NewSckState(SCKSTATE_CONNECTING));
+        }
+      }
+      break;
+    }
+    break;
+  case EVENT_REPORT:
+    if (eventArg) {
+      Debug("New report from server:"); DebugLn(serverReport);
+      rptTimerS = 0;
+    } else {
+      if (rptTimerS > 30) OSIssueEvent(EVENT_SOCKET, NewSckState(SCKSTATE_DISCONNECTING)); // After a while of failing to get a report, 
+      Debug("Server Fail:"); DebugDecLn(rptTimerS);
+    }
+    break;
   }
-  return false;
 }
