@@ -2,7 +2,7 @@
 
 const char ssid[] = "SpikeyWiFi";
 const char pass[] = "spikeynonet";
-const IPAddress server(192,168,1,101); // numeric IP for Raspberry Pi
+const IPAddress server(192,168,1,100); // numeric IP for Raspberry Pi
 const int port = 54321;
 WiFiClient client;
 int wiFiStatus;
@@ -67,12 +67,14 @@ void WiFiEventHandler(EVENT eventId, long eventArg)
       OSIssueEvent(EVENT_SOCKET, NewSckState(SCKSTATE_JOINING));
       break;
     case SCKSTATE_CONNECTING:
-      if (client.connect(server, port)) { // Taken from https://www.arduino.cc/en/Tutorial/WiFiWebClient
+      client.connect(server, port); // Taken from https://www.arduino.cc/en/Tutorial/WiFiWebClient
+      if (client.connected()) {
         OSIssueEvent(EVENT_SOCKET, NewSckState(SCKSTATE_CONNECTED));
         rptTimerS = 10; // Get report ASAP!
         DebugLn("Connected!");
       } else {
-        if ((sckTimerS += eventArg) > 10) OSIssueEvent(EVENT_SOCKET, NewSckState(SCKSTATE_CONNECTING));
+        DebugLn("Still connecting...");
+        if ((sckTimerS += eventArg) > 10) OSIssueEvent(EVENT_SOCKET, NewSckState(SCKSTATE_DISCONNECTING));
       }
       break;
     case SCKSTATE_CONNECTED:

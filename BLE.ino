@@ -1,7 +1,7 @@
 // BLE
 // Modified from https://github.com/nkolban/ESP32_BLE_Arduino/blob/master/examples/BLE_scan/BLE_scan.ino
 
-#include <BLEDevice.h>
+/*#include <BLEDevice.h>
 #include <BLEUtils.h>
 #include <BLEScan.h>
 #include <BLEAdvertisedDevice.h>
@@ -20,7 +20,7 @@ void BleEventHandler(EVENT eventId, long eventArg)
 {
   switch (eventId) {
   case EVENT_POSTINIT:
-    BLEDevice::init("");
+    BLEDevice::init("SpikeyEsp32");
     pBLEScan = BLEDevice::getScan(); //create new scan
     pBLEScan->setAdvertisedDeviceCallbacks(new BleScanCallbacks());
     pBLEScan->setActiveScan(true); //active scan uses more power, but get results faster
@@ -50,3 +50,4 @@ void BleEventHandler(EVENT eventId, long eventArg)
     break;
   }
 }
+*/

@@ -114,3 +114,12 @@ void _OSIssueEvent(EVENT eventId, long eventArg);
 void OSEventHandler(EVENT eventId, long eventArg);
 void SocketEventHandler(EVENT eventId, long eventArg);
 void RendererEventHandler(EVENT eventId, long eventArg);
+
+// Parser
+bool GetDictVal(char* dict, char* item, char* val);
+bool CmpDictVal(char* dict, char* item, char* oldVal); // Returns false if the oldVal is the same as the new value from the dict
+
+// Renderer
+int PrettyLine(char* text, int startY, int justify);
+void PrettyPrint(char* textStart, int textY, char* font); // May modify the text
+void RenderFace(char* face, char* reason);
