@@ -68,9 +68,8 @@ void RenderFace(char* face, char* reason)
 {
   Debug(face); Debug(", "); DebugLn(reason);
   tft.fillScreen(TFT_WHITE);
-  tft.setRotation(1);
-  tft.setTextColor(TFT_BLACK, TFT_WHITE);
   fex.drawJpeg(face, (TFT_HEIGHT/2) - 48,3, nullptr);  // Draw JPEG directly to screen (JPEG is 96x96, hence 48 for middle)
+  tft.setTextColor(TFT_BLACK, TFT_WHITE);
   tft.loadFont("Cambria-24");   // Name of font file (library adds leading / and .vlw)
   PrettyLine(reason, 100, JUSTIFY_CENTRE);
   tft.unloadFont(); // To recover RAM
@@ -93,6 +92,8 @@ void RendererEventHandler(EVENT eventId, long eventArg)
   case EVENT_INIT:
     tft.init();
     tft.setSwapBytes(true);
+    tft.setRotation(1);
+    tft.fillScreen(TFT_WHITE);  // Blank screen at power on
     break;
   case EVENT_POSTINIT:
     oldDisplayId = DISPLAYID_NULL;

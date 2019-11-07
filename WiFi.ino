@@ -9,6 +9,10 @@ WiFiClient client;
 int wiFiStatus;
 SCKSTATE sckState;
 int sckTimerS, rptTimerS;
+const char RadioAnimation[] = "/RadioAnimation";
+int animateWifiMs;
+int animationIndex;
+bool firstConnection;
 
 bool GetReport(char* serverReport)
 {
@@ -39,6 +43,25 @@ void WiFiEventHandler(EVENT eventId, long eventArg)
     wiFiStatus = WL_IDLE_STATUS;     // the Wifi radio's status
     OSIssueEvent(EVENT_SOCKET, NewSckState(SCKSTATE_JOINING));
     rptTimerS = REPORT_TIMEOUTS; // Get report shortly after connecting
+    animationIndex = 0; // So that animation starts with first icon
+    animateWifiMs = 500;  // Draw animation ASAP
+    firstConnection = true;
+    break;
+  case EVENT_TICK:
+    if (sckState < SCKSTATE_CONNECTED) {
+      char animationIcon[30], strVal[3];
+      if ((animateWifiMs += eventArg) > 250) {
+        animateWifiMs = 0;
+        if (++animationIndex > 4) animationIndex = 1;
+        strcpy(animationIcon, RadioAnimation);
+        strcat(animationIcon, itoa(animationIndex, strVal, 10));
+        strcat(animationIcon, ".jpg");
+        fex.drawJpeg(animationIcon, (TFT_HEIGHT/2) - 48,3, nullptr);  // Draw JPEG directly to screen (JPEG is 96x96, hence 48 for middle)
+      }
+    } else if (firstConnection) {
+      firstConnection = false;  // Don't show this again
+      RenderHappyFace("Waiting for report...");
+    }
     break;
   case EVENT_SEC:
     switch (sckState) {

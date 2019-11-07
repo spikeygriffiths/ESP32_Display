@@ -58,7 +58,6 @@ void RenderTimeDetail(char* report, bool reportChange)
   }
   memcpy(lines[lineIndex], &timeText, endLine+1);
   tft.fillScreen(TFT_WHITE);
-  tft.setRotation(1);
   tft.setTextColor(TFT_BLACK, TFT_WHITE);
   tft.setTextDatum(MC_DATUM);
   startY = (lines[0][0]) ? 15 : 35; // Start lower down if first line is empty (eg for "One o'clock")
@@ -81,7 +80,6 @@ void RenderTimeDigits(char* report, bool reportChange)
   if (!GetDictVal(report, "timeDigits", timeDigits)) return;
   if (!GetDayText(report, dayText)) return;
   tft.fillScreen(TFT_WHITE);
-  tft.setRotation(1);
   tft.setTextColor(TFT_BLACK, TFT_WHITE);
   tft.loadFont("Cambria-Bold-72");   // Name of font file (library adds leading / and .vlw)
   PrettyLine(timeDigits, 20, JUSTIFY_CENTRE);

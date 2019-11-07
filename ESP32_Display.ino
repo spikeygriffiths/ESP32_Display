@@ -77,6 +77,7 @@ void OSEventHandler(EVENT eventId, long eventArg)
     Serial.begin(115200); // Start debug
     Debug("Start\r\n");
     button_init();
+    serverReport[0] = '\0'; // Empty report until we know better
     break;
   case EVENT_POSTINIT:
     if (!SPIFFS.begin()) {

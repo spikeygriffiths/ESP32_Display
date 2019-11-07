@@ -38,7 +38,6 @@ void RenderWeatherDetail(char* report, bool reportChange)
   }
   // Display the results
   tft.fillScreen(TFT_WHITE);
-  tft.setRotation(1);
   tft.setTextColor(TFT_BLACK, TFT_WHITE);
   tft.setTextDatum(MC_DATUM);
   jpegName[0] = '\0';
@@ -78,7 +77,6 @@ void RenderWeather(char* report, bool reportChange)
   // Display the results
   tft.fillScreen(TFT_WHITE);
   tft.loadFont("Cambria-36");   // Name of font file (library adds leading / and .vlw)
-  tft.setRotation(1);
   tft.setTextColor(TFT_BLACK, TFT_WHITE);
   tft.setTextDatum(MC_DATUM);
   jpegName[0] = '\0';
