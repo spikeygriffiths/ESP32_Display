@@ -76,7 +76,7 @@ void RenderTimeDigits(char* report, bool reportChange)
 {
   reportChange |= CmpDictVal(report, "timeDigits", timeDigits); // Check to see if any of the values we care about have changed since last time
   if (!reportChange) return;  // Exit if nothing changed
-  Debug("Time digits "); DebugLn(timeDigits);
+  DebugLn("Time update");
   // Parse the report as Python dict, as {<key>:<value>,...}
   if (!GetDictVal(report, "timeDigits", timeDigits)) return;
   if (!GetDayText(report, dayText)) return;

@@ -7,7 +7,6 @@
 #include <FS.h>
 
 #include "SPIFFS.h" // Needed for ESP32 only
-#include "WiFi.h"
 #include <Wire.h>
 #include <Button2.h>
 //#include "esp_adc_cal.h"
@@ -18,7 +17,7 @@
 TFT_eSPI tft = TFT_eSPI(TFT_WIDTH, TFT_HEIGHT); // Invoke custom library
 Button2 btn1(BUTTON_1);
 Button2 btn2(BUTTON_2);
-TFT_eFEX fex = TFT_eFEX(&tft);    // Create TFT_eFX object "efx" with pointer to "tft" object
+TFT_eFEX fex = TFT_eFEX(&tft);    // Create TFT_eFEX object "fex" with pointer to "tft" object
 char serverReport[MAX_REPORT];
 unsigned long elapsedMs = 0;
 unsigned long oldMs;
@@ -34,10 +33,10 @@ void espDelay(int ms)
 void button_init()
 {
   btn1.setPressedHandler([](Button2 & b) { OSIssueEvent(EVENT_BUTTON, BTN_FUNC_TAP); });
-  btn1.setLongClickHandler([](Button2 & b) { OSIssueEvent(EVENT_BUTTON, BTN_FUNC_LONG); });
+  btn1.setLongClickHandler([](Button2 & b) { OSIssueEvent(EVENT_BUTTON, BTN_FUNC_LONG); }); // Taps often also look like long presses
   btn1.setDoubleClickHandler([](Button2 & b) { OSIssueEvent(EVENT_BUTTON, BTN_FUNC_DOUBLE); });
   btn2.setPressedHandler([](Button2 & b) { OSIssueEvent(EVENT_BUTTON, BTN_CUSTOM_TAP); });
-  btn2.setLongClickHandler([](Button2 & b) { OSIssueEvent(EVENT_BUTTON, BTN_CUSTOM_LONG); });
+  btn2.setLongClickHandler([](Button2 & b) { OSIssueEvent(EVENT_BUTTON, BTN_CUSTOM_LONG); }); // Taps often also look like long presses
   btn2.setDoubleClickHandler([](Button2 & b) { OSIssueEvent(EVENT_BUTTON, BTN_CUSTOM_DOUBLE); });
 }
 
@@ -83,9 +82,7 @@ void OSEventHandler(EVENT eventId, long eventArg)
     if (!SPIFFS.begin()) {
       Debug("SPIFFS initialisation failed!\r\n");
       // ToDo: Show something on the display!
-    } else {
-      fex.listSPIFFS(); // Lists the files so you can see what is in the SPIFFS
-    }
+    } else fex.listSPIFFS(); // Lists the files so you can see what is in the SPIFFS
     break;
   case EVENT_TICK:
     btn1.loop();

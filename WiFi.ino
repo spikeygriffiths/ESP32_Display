@@ -1,15 +1,16 @@
 // socket
 
+#include <WiFi.h>
 const char ssid[] = "SpikeyWiFi";
 const char pass[] = "spikeynonet";
-const IPAddress server(192,168,1,100); // numeric IP for Raspberry Pi
-const int port = 54321;
+const IPAddress server(192,168,1,101); // numeric IP for Raspberry Pi
+const int port = 54321; // Get report from Pi on this port
 WiFiClient client;
 int wiFiStatus;
 SCKSTATE sckState;
 int sckTimerS, rptTimerS;
 
-void GetReport(char* serverReport)
+bool GetReport(char* serverReport)
 {
   unsigned int reportIndex;
   char newReport[MAX_REPORT];
@@ -19,8 +20,9 @@ void GetReport(char* serverReport)
   if (client.available()) {  // If there's some text waiting from the socket...
     while (client.available()) newReport[reportIndex++] = client.read();  // Get all the text waiting for me
     strcpy(serverReport, newReport);  // Should guard this to stop report parsing during this operation
-    OSIssueEvent(EVENT_REPORT, serverReport);
-  } else OSIssueEvent(EVENT_REPORT, false);
+    return true;
+  }
+  return false;
 }
 
 SCKSTATE NewSckState(SCKSTATE newState)
@@ -36,6 +38,7 @@ void WiFiEventHandler(EVENT eventId, long eventArg)
   case EVENT_POSTINIT:
     wiFiStatus = WL_IDLE_STATUS;     // the Wifi radio's status
     OSIssueEvent(EVENT_SOCKET, NewSckState(SCKSTATE_JOINING));
+    rptTimerS = REPORT_TIMEOUTS; // Get report shortly after connecting
     break;
   case EVENT_SEC:
     switch (sckState) {
@@ -43,7 +46,7 @@ void WiFiEventHandler(EVENT eventId, long eventArg)
       if (wiFiStatus != WL_CONNECTED) {
         Debug("WiFi.begin status:"); DebugDecLn(wiFiStatus);
         wiFiStatus = WiFi.begin(ssid, pass);  // Connect to WPA/WPA2 network:
-        if ((sckTimerS += eventArg) > 10) {
+        if ((sckTimerS += eventArg) > WIFI_JOINING_TIMEOUTS) {
           DebugLn("Timed out joining net - restart");
           OSIssueEvent(EVENT_SOCKET, NewSckState(SCKSTATE_DISCONNECTING));  // Giving up and restarting from scratch
         }
@@ -67,23 +70,33 @@ void WiFiEventHandler(EVENT eventId, long eventArg)
       OSIssueEvent(EVENT_SOCKET, NewSckState(SCKSTATE_JOINING));
       break;
     case SCKSTATE_CONNECTING:
-      client.connect(server, port); // Taken from https://www.arduino.cc/en/Tutorial/WiFiWebClient
-      if (client.connected()) {
+      if (client.connect(server, port)) { // Taken from https://www.arduino.cc/en/Tutorial/WiFiWebClient
         OSIssueEvent(EVENT_SOCKET, NewSckState(SCKSTATE_CONNECTED));
-        rptTimerS = 10; // Get report ASAP!
         DebugLn("Connected!");
       } else {
         DebugLn("Still connecting...");
-        if ((sckTimerS += eventArg) > 10) OSIssueEvent(EVENT_SOCKET, NewSckState(SCKSTATE_DISCONNECTING));
+        if ((sckTimerS += eventArg) > WIFI_CONNECTION_TIMEOUTS) OSIssueEvent(EVENT_SOCKET, NewSckState(SCKSTATE_DISCONNECTING));
       }
       break;
+    case SCKSTATE_RECONNECTING:
+      if (client.connect(server, port)) { // Taken from https://www.arduino.cc/en/Tutorial/WiFiWebClient
+        NewSckState(SCKSTATE_CONNECTED);  // Silent re-connection (don't issue event)
+      } else {
+        if ((sckTimerS += eventArg) > WIFI_CONNECTION_TIMEOUTS) OSIssueEvent(EVENT_SOCKET, NewSckState(SCKSTATE_DISCONNECTING));
+      }
+      break;    
     case SCKSTATE_CONNECTED:
-      if ((rptTimerS += eventArg) > 10) {
-        if (client.connected()) {
-          GetReport(serverReport);
-        } else { // No longer connected
-          DebugLn("Lost connection!");
-          OSIssueEvent(EVENT_SOCKET, NewSckState(SCKSTATE_CONNECTING));
+      if (!client.connected()) {
+        DebugLn("Lost connection!");
+        OSIssueEvent(EVENT_SOCKET, NewSckState(SCKSTATE_RECONNECTING));
+      } else {
+        if ((rptTimerS += eventArg) > REPORT_TIMEOUTS) {
+          if (GetReport(serverReport)) {
+            OSIssueEvent(EVENT_REPORT, serverReport);
+            NewSckState(SCKSTATE_RECONNECTING); // Will need to re-connect after accepting report (don't know why)
+          } else {
+            if (rptTimerS > REPORT_TIMEOUTS + 5) OSIssueEvent(EVENT_REPORT, false); // We've failed to get a report from the server even after a few extra attempts, so tell system
+          }
         }
       }
       break;
@@ -94,7 +107,7 @@ void WiFiEventHandler(EVENT eventId, long eventArg)
       Debug("New report from server:"); DebugLn(serverReport);
       rptTimerS = 0;
     } else {
-      if (rptTimerS > 30) OSIssueEvent(EVENT_SOCKET, NewSckState(SCKSTATE_DISCONNECTING)); // After a while of failing to get a report, 
+      if (rptTimerS > REPORT_TIMEOUTS * 2) OSIssueEvent(EVENT_SOCKET, NewSckState(SCKSTATE_DISCONNECTING)); // After a while of failing to get a report, 
       Debug("Server Fail:"); DebugDecLn(rptTimerS);
     }
     break;

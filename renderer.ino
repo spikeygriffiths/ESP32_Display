@@ -111,20 +111,25 @@ void RendererEventHandler(EVENT eventId, long eventArg)
     redraw = true;
     switch (eventArg) {
     case BTN_FUNC_TAP:
+      DebugLn("Func button tap");
       if (displayId == DISPLAYID_WEATHER) displayId = DISPLAYID_TIME;
       else if (displayId == DISPLAYID_TIME) displayId = DISPLAYID_WEATHER;
       else displayId = DISPLAYID_TIME; // Default
       more = false; // Default
       break;
-    case BTN_FUNC_LONG:
-      displayId = DISPLAYID_TIME; // Default
+    case BTN_FUNC_LONG: // Taps often also look like long presses
+      DebugLn("Func button long");
+      //displayId = DISPLAYID_TIME; // Default
+      //more = false; // Default
       break;
     //case BTN_FUNC_DOUBLE: break;
     case BTN_CUSTOM_TAP:
+      DebugLn("Custom button tap");
       more ^= true;
       break;
-    case BTN_CUSTOM_LONG:
-      more = false; // Default
+    case BTN_CUSTOM_LONG: // Taps often also look like long presses
+      DebugLn("Custom button long");
+    //  more = false; // Default
       break;
     //case BTN_CUSTOM_DOUBLE: break;
     }

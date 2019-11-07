@@ -96,8 +96,12 @@ typedef enum {
   SCKSTATE_JOINING, // Keep trying to join network
   SCKSTATE_DISCONNECTING, // In case we can't join after a number of tries.  Disconnects, then restarts JOINING
   SCKSTATE_CONNECTING,  // Finding socket on server
+  SCKSTATE_RECONNECTING,  // Re-connecting to socket on server after getting a report
   SCKSTATE_CONNECTED, // All ready to start getting reports from server
 } SCKSTATE;
+
+#define WIFI_JOINING_TIMEOUTS 10
+#define WIFI_CONNECTION_TIMEOUTS 10
 
 // For PrettyLine routine
 #define JUSTIFY_LEFT -1
@@ -106,6 +110,7 @@ typedef enum {
 #define TFT_MARGIN 10 // To stop text starting or ending right at the edge
 
 #define MAX_REPORT 1024 // Arbitrary maximum length of serverReport
+#define REPORT_TIMEOUTS 10
 
 #define OSIssueEvent(evId, evArg) _OSIssueEvent(evId, (long)evArg)
 

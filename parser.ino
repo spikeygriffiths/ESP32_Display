@@ -23,7 +23,7 @@ bool CmpItem(char* target, char* dict)
 
 char* FindItem(char* dict, char* item)
 {
-  Debug("FindItem:"); DebugLn(item);
+  //Debug("FindItem:"); DebugLn(item);
   if ('{' == *dict) { // First char of dict is opening curly brace, so skip it
     while ('}' != *dict) {  // Exit if we reach the end of the dict
       dict = GetNextItem(dict); // Advance dict to start of <item> (after comma), or to close curly brace
