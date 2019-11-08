@@ -56,7 +56,15 @@ void WiFiEventHandler(EVENT eventId, long eventArg)
         strcpy(animationIcon, RadioAnimation);
         strcat(animationIcon, itoa(animationIndex, strVal, 10));
         strcat(animationIcon, ".jpg");
-        fex.drawJpeg(animationIcon, (TFT_HEIGHT/2) - 48,3, nullptr);  // Draw JPEG directly to screen (JPEG is 96x96, hence 48 for middle)
+        fex.drawJpeg(animationIcon, (TFT_HEIGHT/2) - 60,3, nullptr);  // Draw JPEG directly to screen (JPEG is 120x96, hence 60 for middle)
+        tft.setTextColor(TFT_BLACK, TFT_WHITE);
+        tft.loadFont("Cambria-24");   // Name of font file (library adds leading / and .vlw)
+        if (sckState <= SCKSTATE_DISCONNECTING) {
+          PrettyLine(" Joining WiFi ", 100, JUSTIFY_CENTRE);
+        } else {
+          PrettyLine("Finding Vesta", 100, JUSTIFY_CENTRE);
+        }
+        tft.unloadFont(); // To recover RAM
       }
     } else if (firstConnection) {
       firstConnection = false;  // Don't show this again
