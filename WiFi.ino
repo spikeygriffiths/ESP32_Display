@@ -167,7 +167,8 @@ bool GetWiFiCredentials(char* ssid, char* pass)
   }
   while(fileHdl.available()) {
     int len = (fileHdl.readBytesUntil('\n', fileText, sizeof(fileText)));
-    fileText[len-1] = 0;  // Assume '\r' before '\n' - nasty hack for Windows!
+    fileText[len] = 0;  // Ensure string terminated
+    if (fileText[len-1] == '\r') fileText[len-1] = 0;  // If '\r' before '\n', then remove it for Windows
     Debug(fileText);
     if (0 == strncmp(fileText, "ssid", 4)) strcpy(ssid, fileText+5);
     if (0 == strncmp(fileText, "pass", 4)) strcpy(pass, fileText+5);
