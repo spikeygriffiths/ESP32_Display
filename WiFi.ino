@@ -1,15 +1,14 @@
 // socket
 
 #include <WiFi.h>
-const char ssid[] = "SpikeyWiFi";
-const char pass[] = "spikeynonet";
-const IPAddress server(192,168,1,101); // numeric IP for Raspberry Pi
-const int port = 54321; // Get report from Pi on this port
+const IPAddress server(192,168,0,12); // numeric IP for Raspberry Pi
+const int port = 12346; // Get report from Pi on this port
 WiFiClient client;
 int wiFiStatus;
 SCKSTATE sckState;
 int sckTimerS, rptTimerS;
 const char RadioAnimation[] = "/RadioAnimation";
+char ssid[64], pass[64];  // Assume ssid and pass fit into these strings
 int animateWifiMs;
 int animationIndex;
 bool firstConnection;
@@ -41,14 +40,16 @@ void WiFiEventHandler(EVENT eventId, long eventArg)
   switch (eventId) {
   case EVENT_POSTINIT:
     wiFiStatus = WL_IDLE_STATUS;     // the Wifi radio's status
-    OSIssueEvent(EVENT_SOCKET, NewSckState(SCKSTATE_JOINING));
+    OSIssueEvent(EVENT_SOCKET, NewSckState(SCKSTATE_GETCREDS));
     rptTimerS = REPORT_TIMEOUTS; // Get report shortly after connecting
     animationIndex = 0; // So that animation starts with first icon
     animateWifiMs = 500;  // Draw animation ASAP
     firstConnection = true;
+    
     break;
   case EVENT_TICK:
-    if (sckState < SCKSTATE_CONNECTED) {
+    if (sckState == SCKSTATE_GETCREDS) {
+    } else if (sckState >= SCKSTATE_JOINING && sckState < SCKSTATE_CONNECTED && *ssid) {
       char animationIcon[30], strVal[3];
       if ((animateWifiMs += eventArg) > 250) {
         animateWifiMs = 0;
@@ -60,22 +61,32 @@ void WiFiEventHandler(EVENT eventId, long eventArg)
         tft.setTextColor(TFT_BLACK, TFT_WHITE);
         tft.loadFont("Cambria-24");   // Name of font file (library adds leading / and .vlw)
         if (sckState <= SCKSTATE_DISCONNECTING) {
-          PrettyLine(" Joining WiFi ", 100, JUSTIFY_CENTRE);
+          PrettyLine("   Joining WiFi   ", 100, JUSTIFY_CENTRE);
         } else {
-          PrettyLine("Finding Vesta", 100, JUSTIFY_CENTRE);
+          PrettyLine("  Finding Vesta  ", 100, JUSTIFY_CENTRE);
         }
         tft.unloadFont(); // To recover RAM
       }
-    } else if (firstConnection) {
+    } else if (sckState >= SCKSTATE_CONNECTED && firstConnection) {
       firstConnection = false;  // Don't show this again
       RenderHappyFace("Waiting for report...");
     }
     break;
   case EVENT_SEC:
+    if (!*ssid || !*pass) {
+      RenderSadFace("No wifi details!");
+      NewSckState(SCKSTATE_GETCREDS); // Get wifi credentials from file
+    }
     switch (sckState) {
+    case SCKSTATE_GETCREDS:
+      if (GetWiFiCredentials(ssid, pass)) {
+        OSIssueEvent(EVENT_SOCKET, NewSckState(SCKSTATE_JOINING));
+      }
+      break;
     case SCKSTATE_JOINING:
       if (wiFiStatus != WL_CONNECTED) {
         Debug("WiFi.begin status:"); DebugDecLn(wiFiStatus);
+        Debug("WiFi ssid:"); Debug(ssid); Debug(", pass:"); DebugLn(pass);
         wiFiStatus = WiFi.begin(ssid, pass);  // Connect to WPA/WPA2 network:
         if ((sckTimerS += eventArg) > WIFI_JOINING_TIMEOUTS) {
           DebugLn("Timed out joining net - restart");
@@ -143,4 +154,25 @@ void WiFiEventHandler(EVENT eventId, long eventArg)
     }
     break;
   }
+}
+
+bool GetWiFiCredentials(char* ssid, char* pass)
+{
+ File fileHdl = SPIFFS.open("/wifi.txt");
+ char fileText[64]; // Assume no wifi details are longer than this!
+ 
+  if (!fileHdl) {
+    Debug("Failed to open wifi.txt for reading");
+    return false;
+  }
+  while(fileHdl.available()) {
+    int len = (fileHdl.readBytesUntil('\n', fileText, sizeof(fileText)));
+    fileText[len-1] = 0;  // Assume '\r' before '\n' - nasty hack for Windows!
+    Debug(fileText);
+    if (0 == strncmp(fileText, "ssid", 4)) strcpy(ssid, fileText+5);
+    if (0 == strncmp(fileText, "pass", 4)) strcpy(pass, fileText+5);
+  }
+  fileHdl.close();
+  Debug("WiFi ssid:"); Debug(ssid);
+  return true;
 }

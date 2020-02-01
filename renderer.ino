@@ -8,6 +8,7 @@ static bool serverAvailable;
 int PrettyLine(char* text, int startY, int justify)
 {
   int textW = tft.textWidth(text);
+  int textH = tft.fontHeight();
   int startX;
   switch (justify) {
   case JUSTIFY_LEFT:
@@ -20,9 +21,10 @@ int PrettyLine(char* text, int startY, int justify)
     startX = (TFT_HEIGHT-TFT_MARGIN) - textW; // Screen width is TFT_HEIGHT, but don't go right to edge
     break;
   }
+  tft.fillRect(startX,startY, textW,textH, TFT_WHITE);
   tft.setCursor(startX, startY);
   tft.print(text);
-  return (tft.fontHeight() * 12) / 10;  // Return height of text line, with extra gap for readability
+  return (textH * 12) / 10;  // Return height of text line, with extra gap for readability
 }
 
 bool PrettyCheck(char** pText, int* pTextY, char** pTextEnd, char** pLastTextEnd)

@@ -1,6 +1,6 @@
 // Bluetooth
 
-#include "esp_bt_main.h"
+/*#include "esp_bt_main.h"
 #include "esp_gap_bt_api.h"
 #include "esp_bt_device.h"
  
@@ -36,4 +36,4 @@ void BluetoothEventHandler(EVENT eventId, long eventArg)
     }
     break;
   } // end switch (eventId)
-}
+}*/

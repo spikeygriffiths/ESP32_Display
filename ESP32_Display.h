@@ -93,6 +93,7 @@ typedef enum {
 } DISPLAYID;
 
 typedef enum {
+  SCKSTATE_GETCREDS,  // Read ssid and pass from file
   SCKSTATE_JOINING, // Keep trying to join network
   SCKSTATE_DISCONNECTING, // In case we can't join after a number of tries.  Disconnects, then restarts JOINING
   SCKSTATE_CONNECTING,  // Finding socket on server
