@@ -89,7 +89,9 @@ typedef enum {
   DISPLAYID_NULL, // Used to force a display redraw after server comes back up
   DISPLAYID_FACE, // For happy or sad faces
   DISPLAYID_WEATHER,
-  DISPLAYID_TIME, // Could add more functionIds here (eg House info, House power consumption, etc.)
+  DISPLAYID_TIME,
+  DISPLAYID_POWER,
+  DISPLAYID_HEATING,
 } DISPLAYID;
 
 typedef enum {

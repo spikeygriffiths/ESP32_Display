@@ -74,6 +74,10 @@ void RenderWeather(char* report, bool reportChange)
   if (!GetDictVal(report, "icon", icon)) return;
   if (!GetDictVal(report, "maxTemp", maxTemp)) return;
   if (!GetDictVal(report, "minTemp", minTemp)) return;
+  // Fix up cloud icon names
+  if (0==strcmp("LightCloud", icon)) strcpy(icon, "Cloud");
+  if (0==strcmp("LightCloudWithMoon", icon)) strcpy(icon, "CloudWithMoon");
+  if (0==strcmp("LightCloudWithSun", icon)) strcpy(icon, "CloudWithSun"); 
   // Display the results
   tft.fillScreen(TFT_WHITE);
   tft.loadFont("Cambria-36");   // Name of font file (library adds leading / and .vlw)

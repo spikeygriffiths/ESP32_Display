@@ -116,7 +116,9 @@ void RendererEventHandler(EVENT eventId, long eventArg)
     case BTN_FUNC_TAP:
       DebugLn("Func button tap");
       if (displayId == DISPLAYID_WEATHER) displayId = DISPLAYID_TIME;
-      else if (displayId == DISPLAYID_TIME) displayId = DISPLAYID_WEATHER;
+      else if (displayId == DISPLAYID_TIME) displayId = DISPLAYID_POWER;
+      else if (displayId == DISPLAYID_POWER) displayId = DISPLAYID_HEATING;
+      else if (displayId == DISPLAYID_HEATING) displayId = DISPLAYID_WEATHER; // Back to the first option
       else displayId = DISPLAYID_TIME; // Default
       more = false; // Default
       break;
@@ -153,6 +155,12 @@ void RendererEventHandler(EVENT eventId, long eventArg)
         break;
       case DISPLAYID_TIME:
         DisplayDateTime(serverReport, more, (displayId != oldDisplayId));
+        break;
+      case DISPLAYID_POWER:
+        DisplayPower(serverReport, more, (displayId != oldDisplayId));
+        break;
+      case DISPLAYID_HEATING:
+        DisplayHeating(serverReport, more, (displayId != oldDisplayId));
         break;
       } // end switch()
       oldDisplayId = displayId;
