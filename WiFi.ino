@@ -53,11 +53,15 @@ void WiFiEventHandler(EVENT eventId, long eventArg)
       char animationIcon[30], strVal[3];
       if ((animateWifiMs += eventArg) > 250) {
         animateWifiMs = 0;
-        if (++animationIndex > 4) animationIndex = 1;
-        strcpy(animationIcon, RadioAnimation);
-        strcat(animationIcon, itoa(animationIndex, strVal, 10));
-        strcat(animationIcon, ".jpg");
-        fex.drawJpeg(animationIcon, (TFT_HEIGHT/2) - 60,3, nullptr);  // Draw JPEG directly to screen (JPEG is 120x96, hence 60 for middle)
+        if (++animationIndex > 4) animationIndex = 0;
+        if (animationIndex) {
+          strcpy(animationIcon, RadioAnimation);
+          strcat(animationIcon, itoa(animationIndex, strVal, 10));
+          strcat(animationIcon, ".jpg");
+          fex.drawJpeg(animationIcon, (TFT_HEIGHT/2) - 60,3, nullptr);  // Draw JPEG directly to screen (JPEG is 120x96, hence 60 for middle)
+        } else {
+          tft.fillRect((TFT_HEIGHT/2) - 60,3, 120,94, TFT_WHITE);// Draw blank rectangle
+        }
         tft.setTextColor(TFT_BLACK, TFT_WHITE);
         tft.loadFont("Cambria-24");   // Name of font file (library adds leading / and .vlw)
         if (sckState <= SCKSTATE_DISCONNECTING) {

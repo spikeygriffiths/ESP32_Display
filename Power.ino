@@ -5,9 +5,9 @@ int oldPowerDetail;
 
 void RenderPower(char* report, bool reportChange)
 {
-  char powerTxt[10];
+  char powerTxt[10], energyTxt[10];
   char jpegName[40];  // jpegName must be at least 5 chars longer than icon
-  int powerVal;
+  int powerVal, whVal, kWhVal;
   int suffixWidth;
 
   reportChange |= CmpDictVal(report, "powerNow", powerNow); // Check to see if any of the values we care about have changed since last time
@@ -16,6 +16,9 @@ void RenderPower(char* report, bool reportChange)
   // Parse the report as Python dict, as {<key>:<value>,...}
   if (!GetDictVal(report, "powerNow", powerNow)) return;
   if (!GetDictVal(report, "energyToday", energyToday)) return;
+  whVal = atoi(energyToday);
+  kWhVal = whVal / 1000;
+  sprintf(energyTxt, "%d.%d", kWhVal, (whVal %1000) / 100); // Just 1 decimal place of kWh
   if (strlen(powerNow) > 3) { // Convert to kW if > 1000W
     strcpy(powerTxt, powerNow);
     strcpy(powerTxt+1, ".");  // Assume just single digit of kW
@@ -56,7 +59,11 @@ void RenderPower(char* report, bool reportChange)
   } else { // 3 or fewer digits - show in W
     tft.print("W");
   }
+  tft.setCursor(startX, 100);
+  tft.print(energyTxt);
+  tft.print("kWh");
   tft.unloadFont(); // To recover RAM
+  
 }
 
 void DisplayPower(char* report, int powerDetail, bool forceRedraw)
