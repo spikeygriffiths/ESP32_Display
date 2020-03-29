@@ -37,8 +37,7 @@ char* FindItem(char* dict, char* item)
       dict++; // Advance beyond start of this item in order to get to next one...
     }
   }
-  RenderSadFace("Bad report");
-  DebugLn("Not a dict!");
+  Debug(item); DebugLn(" not found");
   return 0; // Indicate we've not found the item
 }
 
@@ -51,6 +50,8 @@ bool GetDictVal(char* dict, char* item, char* val)
     quoteType = *answer++;  // Note quote type (single or double)
     while (*answer != quoteType) *val++ = *answer++; // Copy each character from <val> until we hit the correct terminating quote
     *val = '\0';  // Terminate result by replacing close quote with \0
+  } else {
+    answer = "Unknown";
   }
   return (bool)answer;
 }

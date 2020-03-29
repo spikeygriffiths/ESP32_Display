@@ -120,7 +120,8 @@ typedef enum {
 // Global function prototypes
 void _OSIssueEvent(EVENT eventId, long eventArg);
 void OSEventHandler(EVENT eventId, long eventArg);
-void SocketEventHandler(EVENT eventId, long eventArg);
+void WiFiEventHandler(EVENT eventId, long eventArg);
+void ServerCmdEventHandler(EVENT eventId, long eventArg);
 void RendererEventHandler(EVENT eventId, long eventArg);
 
 // Parser

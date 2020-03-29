@@ -6,7 +6,7 @@ const int port = 12346; // Get report from Pi on this port
 WiFiClient client;
 int wiFiStatus;
 SCKSTATE sckState;
-int sckTimerS, rptTimerS;
+int sckTimerS, rptTimerS, rptAttemps;
 const char RadioAnimation[] = "/RadioAnimation";
 char ssid[64], pass[64];  // Assume ssid and pass fit into these strings
 int animateWifiMs;
@@ -15,10 +15,16 @@ bool firstConnection;
 
 bool GetReport(char* serverReport)
 {
-  unsigned int reportIndex;
+  unsigned int reportIndex = 0;
   char newReport[MAX_REPORT];
-  reportIndex = 0;
-  DebugLn("Get Report");
+  char reqSvr[30]; // Enough space to hold command and MAC (Typically "Get <mac>")
+  byte mac[6];
+  char myMacStr[18];
+  WiFi.macAddress(mac);
+  sprintf(myMacStr, "%02x:%02x:%02x:%02x:%02x:%02x", mac[5], mac[4], mac[3], mac[2], mac[1], mac[0]);
+  Debug("Get Report for "); DebugLn(myMacStr);
+  sprintf(reqSvr, "Get %s", myMacStr);
+  client.write(reqSvr, strlen(reqSvr)); // Tell server that we would like a personalised report for us
   newReport[reportIndex] = '\0';  // Clear buffer ready to receive new report
   if (client.available()) {  // If there's some text waiting from the socket...
     while (client.available()) newReport[reportIndex++] = client.read();  // Get all the text waiting for me
@@ -42,6 +48,7 @@ void WiFiEventHandler(EVENT eventId, long eventArg)
     wiFiStatus = WL_IDLE_STATUS;     // the Wifi radio's status
     OSIssueEvent(EVENT_SOCKET, NewSckState(SCKSTATE_GETCREDS));
     rptTimerS = REPORT_TIMEOUTS; // Get report shortly after connecting
+    rptAttemps = 0;
     animationIndex = 0; // So that animation starts with first icon
     animateWifiMs = 500;  // Draw animation ASAP
     firstConnection = true;
@@ -137,11 +144,14 @@ void WiFiEventHandler(EVENT eventId, long eventArg)
         OSIssueEvent(EVENT_SOCKET, NewSckState(SCKSTATE_RECONNECTING));
       } else {
         if ((rptTimerS += eventArg) > REPORT_TIMEOUTS) {
+          rptTimerS = 0;  // Make sure we don't try and get another report for a while, even if this one fails
           if (GetReport(serverReport)) {
+            rptAttemps = 0;
             OSIssueEvent(EVENT_REPORT, serverReport);
             NewSckState(SCKSTATE_RECONNECTING); // Will need to re-connect after accepting report (don't know why)
           } else {
-            if (rptTimerS > REPORT_TIMEOUTS + 5) OSIssueEvent(EVENT_REPORT, false); // We've failed to get a report from the server even after a few extra attempts, so tell system
+            rptAttemps++;
+            if (rptAttemps > 5) OSIssueEvent(EVENT_REPORT, false); // We've failed to get a report from the server even after a few extra attempts, so tell system
           }
         }
       }
@@ -151,7 +161,6 @@ void WiFiEventHandler(EVENT eventId, long eventArg)
   case EVENT_REPORT:
     if (eventArg) {
       Debug("New report from server:"); DebugLn(serverReport);
-      rptTimerS = 0;
     } else {
       if (rptTimerS > REPORT_TIMEOUTS * 2) OSIssueEvent(EVENT_SOCKET, NewSckState(SCKSTATE_DISCONNECTING)); // After a while of failing to get a report, 
       Debug("Server Fail:"); DebugDecLn(rptTimerS);
