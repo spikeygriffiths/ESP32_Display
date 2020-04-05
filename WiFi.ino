@@ -1,7 +1,12 @@
 // socket
 
 #include <WiFi.h>
-const IPAddress server(192,168,0,12); // numeric IP for Raspberry Pi
+//#include <ESP32WiFiMulti.h>   // Include the Wi-Fi-Multi library
+#include <ESPmDNS.h>        // Include the mDNS library
+
+const char serverName[] = "vestapi"; // Use string URL to find vesta server on the network - can cope with router changing the address of the server
+IPAddress serverIp(0,0,0,0);   // Will be updated using MDNS 
+IPAddress localIp(0,0,0,0);   // Will be udpated using WiFi.localIP()
 const int port = 12346; // Get report from Pi on this port
 WiFiClient client;
 int wiFiStatus;
@@ -104,12 +109,11 @@ void WiFiEventHandler(EVENT eventId, long eventArg)
           OSIssueEvent(EVENT_SOCKET, NewSckState(SCKSTATE_DISCONNECTING));  // Giving up and restarting from scratch
         }
       } else {
-        IPAddress ip = WiFi.localIP();
-        DebugLn("WiFi joined!");
-        //Debug("IP:"); DebugLn(ip);
-        if ((ip[0] == 192) && (ip[1] == 168)) { // Check that address allocated looks plausible
+        localIp = WiFi.localIP();
+        DebugLn("WiFi joined! IP:"); Serial.println(localIp.toString());
+        if ((localIp[0] == 192) && (localIp[1] == 168)) { // Check that address allocated looks plausible
           DebugLn("Good IP");
-          OSIssueEvent(EVENT_SOCKET, NewSckState(SCKSTATE_CONNECTING)); // We've joined now, so next start connecting to the socket
+          OSIssueEvent(EVENT_SOCKET, NewSckState(SCKSTATE_STARTINGMDNS)); // We've joined now, so next start MDNS and then find the server
         } else {
           DebugLn("Silly IP - restart");
           OSIssueEvent(EVENT_SOCKET, NewSckState(SCKSTATE_DISCONNECTING));  // Start all over again
@@ -122,8 +126,19 @@ void WiFiEventHandler(EVENT eventId, long eventArg)
       wiFiStatus = WL_IDLE_STATUS;
       OSIssueEvent(EVENT_SOCKET, NewSckState(SCKSTATE_JOINING));
       break;
+    case SCKSTATE_STARTINGMDNS:
+      if (MDNS.begin("esp32"))  // ToDo: should allow for variable name!  Perhaps also allow for failure count, to restart after too many fails?
+        OSIssueEvent(EVENT_SOCKET, NewSckState(SCKSTATE_FINDINGSVR));   // Named our device, so now find Vesta
+      break;
+    case SCKSTATE_FINDINGSVR:
+      serverIp = MDNS.queryHost(serverName);
+      if (serverIp[0] == localIp[0]) { // If the first byte of the IP address of the server is also our IP address, then we're on the same network
+        Debug("VestaPi's ipaddress:"); Serial.println(serverIp.toString());
+        OSIssueEvent(EVENT_SOCKET, NewSckState(SCKSTATE_CONNECTING));
+      } // else after a while try and re-start WiFi?
+      break;
     case SCKSTATE_CONNECTING:
-      if (client.connect(server, port)) { // Taken from https://www.arduino.cc/en/Tutorial/WiFiWebClient
+      if (client.connect(serverIp, port)) { // Taken from https://www.arduino.cc/en/Tutorial/WiFiWebClient
         OSIssueEvent(EVENT_SOCKET, NewSckState(SCKSTATE_CONNECTED));
         DebugLn("Connected!");
       } else {
@@ -132,7 +147,7 @@ void WiFiEventHandler(EVENT eventId, long eventArg)
       }
       break;
     case SCKSTATE_RECONNECTING:
-      if (client.connect(server, port)) { // Taken from https://www.arduino.cc/en/Tutorial/WiFiWebClient
+      if (client.connect(serverIp, port)) { // Taken from https://www.arduino.cc/en/Tutorial/WiFiWebClient
         NewSckState(SCKSTATE_CONNECTED);  // Silent re-connection (don't issue event)
       } else {
         if ((sckTimerS += eventArg) > WIFI_CONNECTION_TIMEOUTS) OSIssueEvent(EVENT_SOCKET, NewSckState(SCKSTATE_DISCONNECTING));

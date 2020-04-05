@@ -98,6 +98,8 @@ typedef enum {
   SCKSTATE_GETCREDS,  // Read ssid and pass from file
   SCKSTATE_JOINING, // Keep trying to join network
   SCKSTATE_DISCONNECTING, // In case we can't join after a number of tries.  Disconnects, then restarts JOINING
+  SCKSTATE_STARTINGMDNS,  // Start mDNS so that we can find VestaPi server using queryHost to avoid knowing its IP address
+  SCKSTATE_FINDINGSVR,  // Now find server...
   SCKSTATE_CONNECTING,  // Finding socket on server
   SCKSTATE_CONNECTED, // All ready to start getting reports from server
   SCKSTATE_RECONNECTING,  // Re-connecting to socket on server after getting a report

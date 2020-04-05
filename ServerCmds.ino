@@ -12,6 +12,7 @@ void ServerCmdEventHandler(EVENT eventId, long eventArg)
   case EVENT_BUTTON:
     if (!backlight) {
       SetBacklight(true);  // Turn on backlight if we have any user activity.  Need timeout?
+      // Stop button being handled any more
     }
     break;
   case EVENT_REPORT: // Whenever a new report arrives from the server, see if we should execute any commands
