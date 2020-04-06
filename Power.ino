@@ -15,10 +15,7 @@ void RenderPower(char* report, bool reportChange)
   if (!reportChange) return;  // Exit if nothing changed
   // Parse the report as Python dict, as {<key>:<value>,...}
   if (!GetDictVal(report, "powerNow", powerNow)) return;
-  if (!GetDictVal(report, "energyToday", energyToday)) return;
-  whVal = atoi(energyToday);
-  kWhVal = whVal / 1000;
-  sprintf(energyTxt, "%d.%d", kWhVal, (whVal %1000) / 100); // Just 1 decimal place of kWh
+  if (!GetDictVal(report, "energyToday", energyTxt)) return;
   if (strlen(powerNow) > 3) { // Convert to kW if > 1000W
     strcpy(powerTxt, powerNow);
     strcpy(powerTxt+1, ".");  // Assume just single digit of kW

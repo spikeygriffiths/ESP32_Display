@@ -6,6 +6,7 @@
 
 const char serverName[] = "vestapi"; // Use string URL to find vesta server on the network - can cope with router changing the address of the server
 IPAddress serverIp(0,0,0,0);   // Will be updated using MDNS 
+const char friendlyName[] = "esp32";  // For setHstName().  Should be adjustable!
 IPAddress localIp(0,0,0,0);   // Will be udpated using WiFi.localIP()
 const int port = 12346; // Get report from Pi on this port
 WiFiClient client;
@@ -127,7 +128,8 @@ void WiFiEventHandler(EVENT eventId, long eventArg)
       OSIssueEvent(EVENT_SOCKET, NewSckState(SCKSTATE_JOINING));
       break;
     case SCKSTATE_STARTINGMDNS:
-      if (MDNS.begin("esp32"))  // ToDo: should allow for variable name!  Perhaps also allow for failure count, to restart after too many fails?
+      //WiFi.setHostName(friendlyName); // Won't compile
+      if (MDNS.begin(friendlyName))  // ToDo: Allow for failure count, to restart after too many fails?
         OSIssueEvent(EVENT_SOCKET, NewSckState(SCKSTATE_FINDINGSVR));   // Named our device, so now find Vesta
       break;
     case SCKSTATE_FINDINGSVR:
