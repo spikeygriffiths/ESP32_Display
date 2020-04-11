@@ -20,7 +20,8 @@ void ServerCmdEventHandler(EVENT eventId, long eventArg)
     if (GetDictVal(serverReport, "display", cmd)) {
       bool valBacklight = !strcmp(cmd, "on"); // Will return true for "on"
       if (backlight != valBacklight) {
-        SetBacklight(valBacklight);
+        //SetBacklight(valBacklight);
+        Debug("Backlight now "); DebugLn(cmd);
       }
     }
     break;

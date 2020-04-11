@@ -8,7 +8,7 @@ const char serverName[] = "vestapi"; // Use string URL to find vesta server on t
 IPAddress serverIp(0,0,0,0);   // Will be updated using MDNS 
 const char friendlyName[] = "esp32";  // For setHstName().  Should be adjustable!
 IPAddress localIp(0,0,0,0);   // Will be udpated using WiFi.localIP()
-const int port = 12346; // Get report from Pi on this port
+const int port = 12345; // Get report from Pi on this port
 WiFiClient client;
 int wiFiStatus;
 SCKSTATE sckState;
@@ -22,21 +22,28 @@ bool firstConnection;
 bool GetReport(char* serverReport)
 {
   unsigned int reportIndex = 0;
-  char newReport[MAX_REPORT];
-  char reqSvr[30]; // Enough space to hold command and MAC (Typically "Get <mac>")
+  String strReport;
+  char newReport[1024];
+  char reqSvr[30]; // Enough space to hold command and MAC (Typically "ReqRpt <mac>")
   byte mac[6];
   char myMacStr[18];
   WiFi.macAddress(mac);
   sprintf(myMacStr, "%02x:%02x:%02x:%02x:%02x:%02x", mac[5], mac[4], mac[3], mac[2], mac[1], mac[0]);
-  Debug("Get Report for "); DebugLn(myMacStr);
-  sprintf(reqSvr, "Get %s", myMacStr);
-  client.write(reqSvr, strlen(reqSvr)); // Tell server that we would like a personalised report for us
+  sprintf(reqSvr, "reqrpt %s", myMacStr);
+  Debug("Sending: "); Debug(reqSvr); DebugLn("");
+  //client.write(reqSvr, strlen(reqSvr)); // Tell server that we would like a personalised report for us
+  client.print(reqSvr); // Tell server that we would like a personalised report for us
   newReport[reportIndex] = '\0';  // Clear buffer ready to receive new report
   if (client.available()) {  // If there's some text waiting from the socket...
     while (client.available()) newReport[reportIndex++] = client.read();  // Get all the text waiting for me
     strcpy(serverReport, newReport);  // Should guard this to stop report parsing during this operation
     return true;
   }
+  /*if (client.available()) {
+    strReport = client.readStringUntil('\n');
+    strReport.toCharArray(serverReport, sizeof(serverReport));  // Should guard this to stop report parsing during this operation
+    return true;
+  }*/
   return false;
 }
 
