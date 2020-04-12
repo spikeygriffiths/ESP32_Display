@@ -12,7 +12,7 @@ const int port = 12345; // Get report from Pi on this port
 WiFiClient client;
 int wiFiStatus;
 SCKSTATE sckState;
-int sckTimerS, rptTimerS, rptAttemps;
+int sckTimerS, rptTimerS, sckAttempts, sckTimeoutMs;
 const char RadioAnimation[] = "/RadioAnimation";
 char ssid[64], pass[64];  // Assume ssid and pass fit into these strings
 int animateWifiMs;
@@ -27,16 +27,22 @@ bool GetReport(char* serverReport)
   char reqSvr[30]; // Enough space to hold command and MAC (Typically "ReqRpt <mac>")
   byte mac[6];
   char myMacStr[18];
-  WiFi.macAddress(mac);
-  sprintf(myMacStr, "%02x:%02x:%02x:%02x:%02x:%02x", mac[5], mac[4], mac[3], mac[2], mac[1], mac[0]);
-  sprintf(reqSvr, "reqrpt %s", myMacStr);
-  Debug("Sending: "); Debug(reqSvr); DebugLn("");
-  //client.write(reqSvr, strlen(reqSvr)); // Tell server that we would like a personalised report for us
-  client.print(reqSvr); // Tell server that we would like a personalised report for us
-  newReport[reportIndex] = '\0';  // Clear buffer ready to receive new report
-  if (client.available()) {  // If there's some text waiting from the socket...
-    while (client.available()) newReport[reportIndex++] = client.read();  // Get all the text waiting for me
-    strcpy(serverReport, newReport);  // Should guard this to stop report parsing during this operation
+  if (client.connect(serverIp, port)) { // Taken from https://www.arduino.cc/en/Tutorial/WiFiWebClient
+    WiFi.macAddress(mac);
+    sprintf(myMacStr, "%02x:%02x:%02x:%02x:%02x:%02x", mac[5], mac[4], mac[3], mac[2], mac[1], mac[0]);
+    sprintf(reqSvr, "reqrpt %s", myMacStr);
+    Debug("Sending: "); Debug(reqSvr); DebugLn("");
+    client.print(reqSvr); // Tell server that we would like a personalised report for us
+    newReport[reportIndex] = '\0';  // Clear buffer ready to receive new report
+    while (client.connected()) {  // If there's some text waiting from the socket...
+      //while (client.available()) newReport[reportIndex++] = client.read();  // Get all the text waiting for me
+      //strcpy(serverReport, newReport);  // Should guard this to stop report parsing during this operation
+      if (client.available()) {
+        strReport = client.readStringUntil('\n');
+        strReport.toCharArray(serverReport, sizeof(serverReport));  // Should guard this to stop report parsing during this operation
+      }
+    }
+    client.stop();
     return true;
   }
   /*if (client.available()) {
@@ -61,7 +67,6 @@ void WiFiEventHandler(EVENT eventId, long eventArg)
     wiFiStatus = WL_IDLE_STATUS;     // the Wifi radio's status
     OSIssueEvent(EVENT_SOCKET, NewSckState(SCKSTATE_GETCREDS));
     rptTimerS = REPORT_TIMEOUTS; // Get report shortly after connecting
-    rptAttemps = 0;
     animationIndex = 0; // So that animation starts with first icon
     animateWifiMs = 500;  // Draw animation ASAP
     firstConnection = true;
@@ -69,7 +74,7 @@ void WiFiEventHandler(EVENT eventId, long eventArg)
     break;
   case EVENT_TICK:
     if (sckState == SCKSTATE_GETCREDS) {
-    } else if (sckState >= SCKSTATE_JOINING && sckState < SCKSTATE_CONNECTED && *ssid) {
+    } else if (sckState >= SCKSTATE_JOINING && sckState < SCKSTATE_FOUNDSVR && *ssid) {
       char animationIcon[30], strVal[3];
       if ((animateWifiMs += eventArg) > 250) {
         animateWifiMs = 0;
@@ -94,6 +99,62 @@ void WiFiEventHandler(EVENT eventId, long eventArg)
     } else if (sckState >= SCKSTATE_CONNECTED && firstConnection) {
       firstConnection = false;  // Don't show this again
       RenderHappyFace("Waiting for report...");
+    }
+    switch (sckState) {
+    case SCKSTATE_CONNECT:
+      if (client.connect(serverIp, port)) { // Taken from https://www.arduino.cc/en/Tutorial/WiFiWebClient
+        sckTimeoutMs = 1000;  // Stay connected for 1000ms at most
+        NewSckState(SCKSTATE_CONNECTED);
+        DebugLn("Connected!");
+      } else {
+        DebugLn("Failed to connect");
+        NewSckState(SCKSTATE_RECONNECTING);
+      }
+      break;
+    case SCKSTATE_CONNECTED:
+      if (!client.connected()) {
+        DebugLn("Lost connection before req!");
+        OSIssueEvent(EVENT_SOCKET, NewSckState(SCKSTATE_RECONNECTING));
+      } else {
+        char reqSvr[30]; // Enough space to hold command and MAC (Typically "ReqRpt <mac>")
+        byte mac[6];
+        char myMacStr[18];
+        WiFi.macAddress(mac);
+        sprintf(myMacStr, "%02x:%02x:%02x:%02x:%02x:%02x", mac[5], mac[4], mac[3], mac[2], mac[1], mac[0]);
+        sprintf(reqSvr, "reqrpt %s", myMacStr);
+        Debug("Sending: "); Debug(reqSvr); DebugLn("");
+        client.print(reqSvr); // Tell server that we would like a personalised report for us
+        //newReport[reportIndex] = '\0';  // Clear buffer ready to receive new report
+        NewSckState(SCKSTATE_READRPT);
+      }
+      break;
+    case SCKSTATE_READRPT:
+      if (!client.connected()) {
+        DebugLn("Lost connection before reading!");
+        OSIssueEvent(EVENT_SOCKET, NewSckState(SCKSTATE_RECONNECTING));
+      } else {
+        String strReport;
+        //unsigned int reportIndex = 0;
+        //char newReport[1024];
+        //while (client.available()) newReport[reportIndex++] = client.read();  // Get all the text waiting for me
+        //strcpy(serverReport, newReport);  // Should guard this to stop report parsing during this operation
+        if (client.available()) {
+          strReport = client.readStringUntil('\n');
+          strReport.toCharArray(serverReport, sizeof(serverReport));  // Should guard this to stop report parsing during this operation
+          OSIssueEvent(EVENT_REPORT, true);
+          OSIssueEvent(EVENT_SOCKET, NewSckState(SCKSTATE_CLOSE));
+        } else {
+          if ((sckTimeoutMs -= eventArg) <= 0) {
+            OSIssueEvent(EVENT_REPORT, false);  // Didn't get a report before giving up
+            OSIssueEvent(EVENT_SOCKET, NewSckState(SCKSTATE_CLOSE));
+          }
+        }
+      }
+      break;
+    case SCKSTATE_CLOSE:   // Close the socket once we'ev read the report or given up on the server
+      client.stop();
+      OSIssueEvent(EVENT_SOCKET, NewSckState(SCKSTATE_FOUNDSVR));
+      break;
     }
     break;
   case EVENT_SEC:
@@ -143,41 +204,21 @@ void WiFiEventHandler(EVENT eventId, long eventArg)
       serverIp = MDNS.queryHost(serverName);
       if (serverIp[0] == localIp[0]) { // If the first byte of the IP address of the server is also our IP address, then we're on the same network
         Debug("VestaPi's ipaddress:"); Serial.println(serverIp.toString());
-        OSIssueEvent(EVENT_SOCKET, NewSckState(SCKSTATE_CONNECTING));
+        OSIssueEvent(EVENT_SOCKET, NewSckState(SCKSTATE_FOUNDSVR));
       } // else after a while try and re-start WiFi?
       break;
-    case SCKSTATE_CONNECTING:
-      if (client.connect(serverIp, port)) { // Taken from https://www.arduino.cc/en/Tutorial/WiFiWebClient
-        OSIssueEvent(EVENT_SOCKET, NewSckState(SCKSTATE_CONNECTED));
-        DebugLn("Connected!");
-      } else {
-        DebugLn("Still connecting...");
-        if ((sckTimerS += eventArg) > WIFI_CONNECTION_TIMEOUTS) OSIssueEvent(EVENT_SOCKET, NewSckState(SCKSTATE_DISCONNECTING));
+    case SCKSTATE_FOUNDSVR:
+      if ((rptTimerS += eventArg) > REPORT_TIMEOUTS) {
+        sckAttempts = 0;  // Clear counter of attempts to connect to socket
+        rptTimerS = 0;  // Make sure we don't try and get another report for a while
+        OSIssueEvent(EVENT_SOCKET, NewSckState(SCKSTATE_CONNECT));  // So that we can request a report
       }
       break;
     case SCKSTATE_RECONNECTING:
-      if (client.connect(serverIp, port)) { // Taken from https://www.arduino.cc/en/Tutorial/WiFiWebClient
-        NewSckState(SCKSTATE_CONNECTED);  // Silent re-connection (don't issue event)
+      if (sckAttempts < MAX_SCK_ATTEMPTS) {
+        OSIssueEvent(EVENT_SOCKET, NewSckState(SCKSTATE_CONNECT));  // So that we can request a report
       } else {
-        if ((sckTimerS += eventArg) > WIFI_CONNECTION_TIMEOUTS) OSIssueEvent(EVENT_SOCKET, NewSckState(SCKSTATE_DISCONNECTING));
-      }
-      break;    
-    case SCKSTATE_CONNECTED:
-      if (!client.connected()) {
-        DebugLn("Lost connection!");
-        OSIssueEvent(EVENT_SOCKET, NewSckState(SCKSTATE_RECONNECTING));
-      } else {
-        if ((rptTimerS += eventArg) > REPORT_TIMEOUTS) {
-          rptTimerS = 0;  // Make sure we don't try and get another report for a while, even if this one fails
-          if (GetReport(serverReport)) {
-            rptAttemps = 0;
-            OSIssueEvent(EVENT_REPORT, serverReport);
-            NewSckState(SCKSTATE_RECONNECTING); // Will need to re-connect after accepting report (don't know why)
-          } else {
-            rptAttemps++;
-            if (rptAttemps > 5) OSIssueEvent(EVENT_REPORT, false); // We've failed to get a report from the server even after a few extra attempts, so tell system
-          }
-        }
+        OSIssueEvent(EVENT_SOCKET, NewSckState(SCKSTATE_DISCONNECTING));
       }
       break;
     }

@@ -70,8 +70,8 @@ typedef enum {
   EVENT_POSTINIT, // No arg
   EVENT_TICK, // Arg is ms since last EVENT_TICK
   EVENT_SEC,  // Arg is secs since last EVENT_SEC
-  EVENT_SOCKET,  // Arg is SCKSTATE
   EVENT_BUTTON, // Arg is BUTTON
+  EVENT_SOCKET, // Arg is SCKSTATE_xxx below
   EVENT_REPORT, // Arg is pointer to new report
   EVENT_DISPLAY, // Arg is DISPLAY_xxx
 } EVENT;
@@ -100,13 +100,17 @@ typedef enum {
   SCKSTATE_DISCONNECTING, // In case we can't join after a number of tries.  Disconnects, then restarts JOINING
   SCKSTATE_STARTINGMDNS,  // Start mDNS so that we can find VestaPi server using queryHost to avoid knowing its IP address
   SCKSTATE_FINDINGSVR,  // Now find server...
-  SCKSTATE_CONNECTING,  // Finding socket on server
+  SCKSTATE_FOUNDSVR,  // Found server.  Now periodically ask for a report
+  SCKSTATE_CONNECT,  // Connecting to socket on server
+  SCKSTATE_RECONNECTING,  // Try to again to connect 
   SCKSTATE_CONNECTED, // All ready to start getting reports from server
-  SCKSTATE_RECONNECTING,  // Re-connecting to socket on server after getting a report
+  SCKSTATE_READRPT,  // Reading the report
+  SCKSTATE_CLOSE,   // Close the socket once we'ev read the report or given up on the server
 } SCKSTATE;
 
 #define WIFI_JOINING_TIMEOUTS 10
 #define WIFI_CONNECTION_TIMEOUTS 10
+#define MAX_SCK_ATTEMPTS 4
 
 // For PrettyLine routine
 #define JUSTIFY_LEFT -1
