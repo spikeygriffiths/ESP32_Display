@@ -7,7 +7,7 @@ void RenderPower(char* report, bool reportChange)
 {
   char powerTxt[10], energyTxt[10];
   char jpegName[40];  // jpegName must be at least 5 chars longer than icon
-  int powerVal, whVal, kWhVal;
+  int powerVal, kWhVal;
   int suffixWidth;
 
   reportChange |= CmpDictVal(report, "powerNow", powerNow); // Check to see if any of the values we care about have changed since last time
@@ -16,6 +16,7 @@ void RenderPower(char* report, bool reportChange)
   // Parse the report as Python dict, as {<key>:<value>,...}
   if (!GetDictVal(report, "powerNow", powerNow)) return;
   if (!GetDictVal(report, "energyToday", energyTxt)) return;
+  strcat(energyTxt, "kWh");
   if (strlen(powerNow) > 3) { // Convert to kW if > 1000W
     strcpy(powerTxt, powerNow);
     strcpy(powerTxt+1, ".");  // Assume just single digit of kW
@@ -27,7 +28,7 @@ void RenderPower(char* report, bool reportChange)
     suffixWidth = 10; // Allow for small "kW" after digits
   }
   powerVal = atoi(powerNow);
-  tft.fillScreen(TFT_WHITE);
+  //tft.fillScreen(TFT_WHITE);
   tft.setTextColor(TFT_BLACK, TFT_WHITE);
   tft.setTextDatum(MC_DATUM);
   jpegName[0] = '\0';
@@ -43,14 +44,13 @@ void RenderPower(char* report, bool reportChange)
   Debug("Power Jpeg:"); DebugLn(jpegName);
   fex.drawJpeg(jpegName, 15,0, nullptr);  // Draw JPEG directly to screen
   tft.loadFont("Cambria-48");   // Name of font file (library adds leading / and .vlw)
-  //PrettyLine(powerTxt, 50, JUSTIFY_CENTRE);
   int startX = (TFT_HEIGHT/2) - (tft.textWidth(powerTxt) / 2) - suffixWidth;  // Must calculate this while using correct font.  -suffixWidth to allow for "W" or "kW"
   int endX = (TFT_HEIGHT/2) + (tft.textWidth(powerTxt) / 2) - suffixWidth;  // Must calculate this while using correct font
   tft.setCursor(startX, 50);
   tft.print(powerTxt);
   tft.unloadFont(); // To recover RAM
   tft.loadFont("Cambria-24");   // Name of font file (library adds leading / and .vlw)
-  tft.setCursor(endX+2, 50+24-6);
+  tft.setCursor(endX+3, 50+24-7);
   if (strlen(powerNow) > 3) { // Convert to kW if > 1000W
     tft.print("kW"); // Lose units digit of power (otherwise string gets too long!)
   } else { // 3 or fewer digits - show in W
@@ -58,7 +58,6 @@ void RenderPower(char* report, bool reportChange)
   }
   tft.setCursor(startX, 100);
   tft.print(energyTxt);
-  tft.print("kWh");
   tft.unloadFont(); // To recover RAM
   
 }
