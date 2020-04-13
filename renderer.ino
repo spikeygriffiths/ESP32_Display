@@ -4,6 +4,10 @@ static bool more;
 static DISPLAYID displayId, oldDisplayId;
 static bool redraw;
 static bool serverAvailable;
+int animateWifiMs;
+int animationIndex;
+bool firstConnection;
+SCKSTATE renderSckState;
 
 int PrettyLine(char* text, int startY, int justify)
 {
@@ -102,8 +106,59 @@ void RendererEventHandler(EVENT eventId, long eventArg)
     displayId = DISPLAYID_TIME; // Default at power on
     serverAvailable = false;
     more = false;
+    animationIndex = 0; // So that animation starts with first icon
+    animateWifiMs = 500;  // Draw animation ASAP
+    firstConnection = true;
+    break;
+  case EVENT_TICK:
+    if (renderSckState > SCKSTATE_GETCREDS && renderSckState < SCKSTATE_FOUNDSVR) {
+      char animationIcon[30], strVal[3];
+      if ((animateWifiMs += eventArg) > 250) {
+        animateWifiMs = 0;
+        if (++animationIndex > 4) animationIndex = 0;
+        if (animationIndex) {
+          strcpy(animationIcon, RadioAnimation);
+          strcat(animationIcon, itoa(animationIndex, strVal, 10));
+          strcat(animationIcon, ".jpg");
+          fex.drawJpeg(animationIcon, (TFT_HEIGHT/2) - 60,3, nullptr);  // Draw JPEG directly to screen (JPEG is 120x96, hence 60 for middle)
+        } else {
+          tft.fillRect((TFT_HEIGHT/2) - 60,3, 120,94, TFT_WHITE);// Draw blank rectangle
+        }
+        tft.setTextColor(TFT_BLACK, TFT_WHITE);
+        tft.loadFont("Cambria-24");   // Name of font file (library adds leading / and .vlw)
+        if (renderSckState <= SCKSTATE_DISCONNECTING) {
+          PrettyLine("   Joining WiFi   ", 100, JUSTIFY_CENTRE);
+        } else {
+          PrettyLine("  Finding Vesta  ", 100, JUSTIFY_CENTRE);
+        }
+        tft.unloadFont(); // To recover RAM
+      }
+      oldDisplayId = DISPLAYID_NULL;  // To force a re-draw once we have the report (again)
+    } else if (renderSckState >= SCKSTATE_CONNECTED && firstConnection) {
+      firstConnection = false;  // Don't show this again
+      RenderHappyFace("Waiting for report...");
+    }
+    if ((redraw) & (serverAvailable)) {
+      redraw = false;
+      switch (displayId) {
+      case DISPLAYID_WEATHER:
+        DisplayWeather(serverReport, more, (displayId != oldDisplayId));
+        break;
+      case DISPLAYID_TIME:
+        DisplayDateTime(serverReport, more, (displayId != oldDisplayId));
+        break;
+      case DISPLAYID_POWER:
+        DisplayPower(serverReport, more, (displayId != oldDisplayId));
+        break;
+      case DISPLAYID_HEATING:
+        DisplayHeating(serverReport, more, (displayId != oldDisplayId));
+        break;
+      } // end switch()
+      oldDisplayId = displayId;
+    }
     break;
   case EVENT_SOCKET:
+    renderSckState = (SCKSTATE)eventArg;  // Keep track of sckState for rendering
     redraw = true;
     if (SCKSTATE_DISCONNECTING == eventArg) {
       serverAvailable = false;
@@ -144,26 +199,6 @@ void RendererEventHandler(EVENT eventId, long eventArg)
     serverAvailable = (bool)eventArg;
     if (!eventArg) {
       RenderSadFace("Server down");
-    }
-    break;
-  case EVENT_TICK:
-    if ((redraw) & (serverAvailable)) {
-      redraw = false;
-      switch (displayId) {
-      case DISPLAYID_WEATHER:
-        DisplayWeather(serverReport, more, (displayId != oldDisplayId));
-        break;
-      case DISPLAYID_TIME:
-        DisplayDateTime(serverReport, more, (displayId != oldDisplayId));
-        break;
-      case DISPLAYID_POWER:
-        DisplayPower(serverReport, more, (displayId != oldDisplayId));
-        break;
-      case DISPLAYID_HEATING:
-        DisplayHeating(serverReport, more, (displayId != oldDisplayId));
-        break;
-      } // end switch()
-      oldDisplayId = displayId;
     }
     break;
   } // end switch (eventId)
