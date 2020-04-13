@@ -215,7 +215,7 @@ void WiFiEventHandler(EVENT eventId, long eventArg)
       }
       break;
     case SCKSTATE_RECONNECTING:
-      if (sckAttempts < MAX_SCK_ATTEMPTS) {
+      if (sckAttempts++ < MAX_SCK_ATTEMPTS) {
         OSIssueEvent(EVENT_SOCKET, NewSckState(SCKSTATE_CONNECT));  // So that we can request a report
       } else {
         OSIssueEvent(EVENT_SOCKET, NewSckState(SCKSTATE_DISCONNECTING));
